@@ -262,7 +262,7 @@ int dds_writecdr_impl(void * wr, void * xp, struct ddsi_serdata * dinp, bool flu
     return dds_return;
   }
 
-  if (context.is_recording_allowed()) {
+  if (context.is_recording_allowed() && trace_filter_is_rcl_publish_recorded) {
     tracepoint(
       TRACEPOINT_PROVIDER, dds_bind_addr_to_stamp, serialized_message_addr, dinp->timestamp.v);
 #ifdef DEBUG_OUTPUT
@@ -289,7 +289,7 @@ void _ZN8eprosima8fastrtps4rtps13WriterHistory13set_fragmentsEPNS1_13CacheChange
     return;
   }
 
-  if (context.is_recording_allowed()) {
+  if (context.is_recording_allowed() && trace_filter_is_rcl_publish_recorded) {
     tracepoint(
       TRACEPOINT_PROVIDER, dds_bind_addr_to_stamp, nullptr, change->sourceTimestamp.to_ns());
 #ifdef DEBUG_OUTPUT
@@ -468,6 +468,12 @@ void SYMBOL_CONCAT_3(
     return;
   }
 
+  auto node_base_interface_ptr = static_cast<rclcpp::node_interfaces::NodeBaseInterface*>(const_cast<void*>(node_ptr));
+  auto node_handle = node_base_interface_ptr->get_rcl_node_handle();
+  if (!context.get_controller().is_allowed_node(node_handle)) {
+    return;
+  }
+
   if (!data_container.is_assigned_add_callback_group()) {
     data_container.assign_add_callback_group(record);
   }
@@ -536,6 +542,11 @@ bool SYMBOL_CONCAT_3(
     return ret;
   }
 
+  auto node_handle = node_ptr->get_rcl_node_handle();
+  if (!context.get_controller().is_allowed_node(node_handle)) {
+    return ret;
+  }
+
   if (!data_container.is_assigned_add_callback_group_static_executor()) {
     data_container.assign_add_callback_group_static_executor(record);
   }
@@ -558,6 +569,9 @@ void _ZN6rclcpp13CallbackGroup9add_timerESt10shared_ptrINS_9TimerBaseEE(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record = [](const void * obj, const void * timer_handle, int64_t init_time) {
+    if (!context.get_controller().is_allowed_timer_handle(timer_handle)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, callback_group_add_timer, obj, timer_handle, init_time);
 
 #ifdef DEBUG_OUTPUT
@@ -591,6 +605,9 @@ void _ZN6rclcpp13CallbackGroup16add_subscriptionESt10shared_ptrINS_16Subscriptio
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record = [](const void * obj, const void * subscription_handle, int64_t init_time) {
+    if (!context.get_controller().is_allowed_subscription_handle(subscription_handle)) {
+      return;
+    }
     tracepoint(
       TRACEPOINT_PROVIDER, callback_group_add_subscription, obj, subscription_handle, init_time);
 
@@ -617,6 +634,19 @@ void _ZN6rclcpp13CallbackGroup16add_subscriptionESt10shared_ptrINS_16Subscriptio
   record(obj, subscription_handle, now);
 }
 
+
+class OwnService: public rclcpp::ServiceBase
+{
+public:
+  explicit OwnService(std::shared_ptr<rcl_node_t> node_handle)
+    : ServiceBase(node_handle) {}
+
+  // Wrapper to access protected member functions of the inherited class
+  rcl_node_t * wrap_get_rcl_node_handle() {
+    return this->get_rcl_node_handle();
+  }
+};
+
 // rclcpp::CallbackGroup::add_service(std::shared_ptr<rclcpp::ServiceBase>)
 void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
   void * obj, const rclcpp::ServiceBase::SharedPtr service_ptr)
@@ -642,6 +672,12 @@ void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
     return;
   }
 
+  std::shared_ptr<OwnService> own_service_ptr = std::dynamic_pointer_cast<OwnService>(service_ptr);
+  auto node_handle = own_service_ptr->wrap_get_rcl_node_handle();
+  if (!context.get_controller().is_allowed_node(node_handle)) {
+    return;
+  }
+
   if (!data_container.is_assigned_callback_group_add_service()) {
     data_container.assign_callback_group_add_service(record);
   }
@@ -649,6 +685,20 @@ void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
   data_container.store_callback_group_add_service(obj, service_handle, now);
   record(obj, service_handle, now);
 }
+
+class OwnClient: public rclcpp::ClientBase
+{
+public:
+  explicit OwnClient(
+    rclcpp::node_interfaces::NodeBaseInterface * node_base,
+    rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph
+    ) : ClientBase(node_base, node_graph) {}
+
+  // Wrapper to access protected member functions of the inherited class
+  rcl_node_t * wrap_get_rcl_node_handle() {
+    return this->get_rcl_node_handle();
+  }
+};
 
 // rclcpp::CallbackGroup::add_client(std::shared_ptr<rclcpp::ClientBase>)
 void _ZN6rclcpp13CallbackGroup10add_clientESt10shared_ptrINS_10ClientBaseEE(
@@ -672,6 +722,12 @@ void _ZN6rclcpp13CallbackGroup10add_clientESt10shared_ptrINS_10ClientBaseEE(
   ((functionT)orig_func)(obj, client_ptr);
   
   if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
+  std::shared_ptr<OwnClient> own_client_ptr = std::dynamic_pointer_cast<OwnClient>(client_ptr);
+  auto node_handle = own_client_ptr->wrap_get_rcl_node_handle();
+  if (!context.get_controller().is_allowed_node(node_handle)) {
     return;
   }
 
