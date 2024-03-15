@@ -46,6 +46,8 @@
 #undef ros_trace_rmw_publisher_init
 #undef ros_trace_rmw_subscription_init
 
+#define D(X) {std::cout << __func__ << ": " << __LINE__ << X << std::endl;}
+
 // #define DEBUG_OUTPUT
 
 #define DEFINE_ORIG_FUNC(TP_NAME) TP_NAME = dlsym(RTLD_NEXT, #TP_NAME)
@@ -871,7 +873,7 @@ void ros_trace_rcl_service_init(
 
   check_and_run_trace_node();
 
-  context.get_controller().add_service_handle(service_handle, wnode_handle);
+  context.get_controller().add_service_handle(service_handle, node_handle);
 
   data_container.store_rcl_service_init(
     service_handle, node_handle, rmw_service_handle, service_name, now);
@@ -947,6 +949,8 @@ void ros_trace_rcl_client_init(
   if (!context.get_controller().is_allowed_process()) {
     return;
   }
+
+  context.get_controller().add_client_handle(client_handle, node_handle);
 
   auto now = clock.now();
 
@@ -1084,11 +1088,11 @@ void ros_trace_rcl_lifecycle_state_machine_init(
     return;
   }
 
+  context.get_controller().add_state_machine(state_machine, node_handle);
+
   auto now = clock.now();
 
   check_and_run_trace_node();
-
-  context.get_controller().add_state_machine(state_machine, node_handle);
 
   record(node_handle, state_machine, now);
 }
@@ -1106,13 +1110,11 @@ void ros_trace_rcl_lifecycle_transition(
     return;
   }
 
-  if (!context.get_controller().is_allowed_state_machine(state_machine)) {
-    return;
-  }
-
   if (context.is_recording_allowed()) {
     ((functionT) orig_func)(state_machine, start_label, goal_label);
-
+    if (!context.get_controller().is_allowed_state_machine(state_machine)) {
+      return;
+    }
 #ifdef DEBUG_OUTPUT
     std::cerr << "rcl_lifecycle_transition," <<
       state_machine << "," <<

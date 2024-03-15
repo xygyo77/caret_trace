@@ -29,6 +29,37 @@
 #include <unordered_set>
 #include <utility>
 
+#include <execinfo.h>
+#include <cstring>
+#include <unistd.h>
+static void extractc_fn(const char* symbol, char* fn, size_t bufSize) {
+    const char* start = strchr(symbol, '(');
+    if (start) {
+        ++start; // '('を飛ばす
+        const char* end = strchr(start, '+');
+        if (end) {
+            strncpy(fn, start, end - start);
+            fn[end - start] = '\0'; // 終端文字を追加
+        } else {
+            strncpy(fn, start, bufSize - 1);
+            fn[bufSize - 1] = '\0';
+        }
+    } else {
+        strncpy(fn, symbol, bufSize - 1);
+        fn[bufSize - 1] = '\0';
+    }
+}
+
+#define D(X) { \
+  void* callstack[2]; \
+  int frames = backtrace(callstack, 2); \
+  char** symbols = backtrace_symbols(callstack, frames); \
+  char fn[512]; \
+  extractc_fn(symbols[1], fn, 512); \
+  std::cout << getpid() << "/ " << gettid() << ": [" << fn << "->" <<__func__ << "] " << __LINE__ << ": " << X << std::endl; \
+  free(symbols); \
+}
+
 #define SELECT_NODES_ENV_NAME "CARET_SELECT_NODES"
 #define IGNORE_NODES_ENV_NAME "CARET_IGNORE_NODES"
 #define SELECT_TOPICS_ENV_NAME "CARET_SELECT_TOPICS"
@@ -247,33 +278,21 @@ bool TracingController::is_allowed_node(const void * node_handle)
 
 bool TracingController::is_allowed_timer_handle(const void * timer_handle)
 {
-  {
-    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-    auto timer_handle_it = callback_to_timer_handles_.find(callback);
-    if (timer_handle_it == callback_to_timer_handles_.end()) {
-      return true;
-    }
-    auto node_handle_it = timer_handle_to_node_handles_.find(timer_handle_it->second);
-    if (node_handle_it == timer_handle_to_node_handles_.end()) {
-      return true;
+  std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+  for (const auto& pair : timer_handle_to_node_handles_) {
+    if (pair.second == timer_handle) {
+      return is_allowed_node(pair.first);
     }
   }
-
-  auto node_handle = node_handle_it->first;
-  return is_allowed_node(node_handle);
+  // not found
+  return true;
 }
 
 bool TracingController::is_allowed_state_machine(const void * state_machine)
 {
-  {
-    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-    auto state_machine_it = state_machine_to_node_handles_.find(state_machine_it);
-    if (state_machine_it == state_machine_to_node_handles_.end()) {
-      return true;
-    }
-  }
+  std::shared_lock<std::shared_timed_mutex> lock(mutex_);
 
-  auto node_handle = state_machine_it->first;
+  auto node_handle = state_machine_to_node_handles_[state_machine];
   return is_allowed_node(node_handle);
 }
 
@@ -525,8 +544,90 @@ bool TracingController::is_allowed_ipb(const void * ipb)
   }
 }
 
+bool TracingController::is_allowed_service_handle(const void * service_handle)
+{
+  std::unordered_map<const void *, bool>::iterator is_allowed_it;
+  {
+    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+    is_allowed_it = allowed_service_handle_.find(service_handle);
+    if (is_allowed_it != allowed_service_handle_.end()) {
+      return is_allowed_it->second;
+    }
+  }
+
+  {
+    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+    auto node_handle = service_handle_to_node_handles_[service_handle];
+    auto node_name = node_handle_to_node_names_[node_handle];
+
+    if (select_enabled_) {
+      auto is_selected_node = partial_match(selected_node_names_, node_name);
+
+      if (is_selected_node && selected_node_names_.size() > 0) {
+        allowed_service_handle_.insert(std::make_pair(service_handle, true));
+        return true;
+      }
+
+      allowed_service_handle_.insert(std::make_pair(service_handle, false));
+      return false;
+    } else if (ignore_enabled_) {
+      auto is_ignored_node = partial_match(ignored_node_names_, node_name);
+
+      if (is_ignored_node && ignored_node_names_.size() > 0) {
+        allowed_service_handle_.insert(std::make_pair(service_handle, false));
+        return false;
+      }
+      allowed_service_handle_.insert(std::make_pair(service_handle, true));
+      return true;
+    }
+    allowed_service_handle_.insert(std::make_pair(service_handle, true));
+    return true;
+  }
+}
+
+bool TracingController::is_allowed_client_handle(const void * client_handle) {
+  std::unordered_map<const void *, bool>::iterator is_allowed_it;
+  {
+    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+    is_allowed_it = allowed_client_handle_.find(client_handle);
+    if (is_allowed_it != allowed_client_handle_.end()) {
+      return is_allowed_it->second;
+    }
+  }
+  
+  {
+    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+    auto node_handle = client_handle_to_node_handles_[client_handle];
+    auto node_name = node_handle_to_node_names_[node_handle];
+
+    if (select_enabled_) {
+      auto is_selected_node = partial_match(selected_node_names_, node_name);
+
+      if (is_selected_node && selected_node_names_.size() > 0) {
+        allowed_client_handle_.insert(std::make_pair(client_handle, true));
+        return true;
+      }
+
+      allowed_client_handle_.insert(std::make_pair(client_handle, false));
+      return false;
+    } else if (ignore_enabled_) {
+      auto is_ignored_node = partial_match(ignored_node_names_, node_name);
+
+      if (is_ignored_node && ignored_node_names_.size() > 0) {
+        allowed_client_handle_.insert(std::make_pair(client_handle, false));
+        return false;
+      }
+      allowed_client_handle_.insert(std::make_pair(client_handle, true));
+      return true;
+    }
+    allowed_client_handle_.insert(std::make_pair(client_handle, true));
+    return true;
+  }
+}
+
 bool TracingController::is_allowed_process()
 {
+  D(0)
   if (ignore_enabled_) {
     auto is_ignored_process = partial_match(
       ignored_process_names_,
@@ -689,4 +790,16 @@ void TracingController::add_state_machine(const void * state_machine, const void
 {
   std::lock_guard<std::shared_timed_mutex> lock(mutex_);
   state_machine_to_node_handles_.insert(std::make_pair(state_machine, node_handle));
+}
+
+void TracingController::add_service_handle(const void * service_handle, const void * node_handle)
+{
+  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+  service_handle_to_node_handles_.insert(std::make_pair(service_handle, node_handle));
+}
+
+void TracingController::add_client_handle(const void * client_handle, const void * node_handle)
+{
+  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+  client_handle_to_node_handles_.insert(std::make_pair(client_handle, node_handle));
 }

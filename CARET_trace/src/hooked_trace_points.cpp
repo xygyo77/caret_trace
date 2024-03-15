@@ -46,6 +46,8 @@
 
 #include "caret_trace/keys_set.hpp"
 
+#define D(X) {std::cout << __func__ << ": " << __LINE__ << X << std::endl;}
+
 #define SYMBOL_CONCAT_2(x, y) x##y
 #define SYMBOL_CONCAT_3(x, y, z) x##y##z
 
@@ -155,7 +157,7 @@ void update_dds_function_addr()
 
   static std::mutex mutex;
   std::lock_guard<std::mutex> lock(mutex);
-
+  
   std::string env_var;
   try {
     env_var = rcpputils::get_env_var("RMW_IMPLEMENTATION");
@@ -191,7 +193,9 @@ void update_dds_function_addr()
 
   if (context.get_controller().is_allowed_process()) {
     static auto record = [](const char * rmw_implementation, int64_t init_time) {
-      tracepoint(TRACEPOINT_PROVIDER, rmw_implementation, rmw_implementation, init_time);
+      if (context.is_recording_allowed() && trace_filter_is_rcl_publish_recorded) {
+        tracepoint(TRACEPOINT_PROVIDER, rmw_implementation, rmw_implementation, init_time);
+      }
     };
 
     if (!data_container.is_assigned_rmw_implementation()) {
@@ -266,7 +270,8 @@ int dds_writecdr_impl(void * wr, void * xp, struct ddsi_serdata * dinp, bool flu
     tracepoint(
       TRACEPOINT_PROVIDER, dds_bind_addr_to_stamp, serialized_message_addr, dinp->timestamp.v);
 #ifdef DEBUG_OUTPUT
-    std::cerr << "dds_bind_addr_to_stamp," << data << "," << tstamp << std::endl;
+    //std::cerr << "dds_bind_addr_to_stamp," << data << "," << tstamp << std::endl;
+    std::cerr << "dds_bind_addr_to_stamp," << serialized_message_addr << "," << dinp->timestamp.v << std::endl;
 #endif
   }
   return dds_return;
@@ -278,7 +283,6 @@ void _ZN8eprosima8fastrtps4rtps13WriterHistory13set_fragmentsEPNS1_13CacheChange
   void * obj, eprosima::fastrtps::rtps::CacheChange_t * change)
 {
   static auto & context = Singleton<Context>::get_instance();
-
   using functionT = void (*)(void *, eprosima::fastrtps::rtps::CacheChange_t *);
   if (FASTDDS::SET_FRAGMENTS == nullptr) {
     update_dds_function_addr();
@@ -439,7 +443,7 @@ void SYMBOL_CONCAT_3(
   _ZN6rclcpp8Executor25add_callback_group_to_map,
   ESt10shared_ptrINS_13CallbackGroupEES1_INS_15node_interfaces17NodeBaseInterface,
   EERSt3mapISt8weak_ptrIS2_ES8_IS5_ESt10owner_lessIS9_ESaISt4pairIKS9_SA_EEEb)(
-  void * obj, rclcpp::CallbackGroup::SharedPtr group_ptr, const void * node_ptr,
+  void * obj, rclcpp::CallbackGroup::SharedPtr group_ptr, rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr,
   const void * weak_groups_to_nodes, bool notify)
 {
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
@@ -447,7 +451,13 @@ void SYMBOL_CONCAT_3(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record =
-    [](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
+    [&node_ptr](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
+      // After type conversion with static_cast, convert to shared_ptr with static_pointer_cast
+      //auto node_base_ptr = static_cast<const rclcpp::node_interfaces::NodeBaseInterface *>(node_ptr);
+      auto node_handle = node_ptr->get_rcl_node_handle();
+      if (!context.get_controller().is_allowed_node(node_handle)) {
+        return;
+      }
       tracepoint(
         TRACEPOINT_PROVIDER, add_callback_group, obj, group_addr, group_type_name, init_time);
 
@@ -459,18 +469,12 @@ void SYMBOL_CONCAT_3(
   auto now = clock.now();
 
   using functionT =
-    void (*)(void *, rclcpp::CallbackGroup::SharedPtr, const void *, const void *, bool);
+    void (*)(void *, rclcpp::CallbackGroup::SharedPtr, rclcpp::node_interfaces::NodeBaseInterface::SharedPtr, const void *, bool);
   auto group_addr = static_cast<const void *>(group_ptr.get());
 
   ((functionT)orig_func)(obj, group_ptr, node_ptr, weak_groups_to_nodes, notify);
 
   if (!context.get_controller().is_allowed_process()) {
-    return;
-  }
-
-  auto node_base_interface_ptr = static_cast<rclcpp::node_interfaces::NodeBaseInterface*>(const_cast<void*>(node_ptr));
-  auto node_handle = node_base_interface_ptr->get_rcl_node_handle();
-  if (!context.get_controller().is_allowed_node(node_handle)) {
     return;
   }
 
@@ -480,7 +484,7 @@ void SYMBOL_CONCAT_3(
 
   static KeysSet<void *, void *, void *> recorded_args;
 
-  auto node_ptr_ = const_cast<void *>(node_ptr);
+  void* node_ptr_ = node_ptr.get();
   auto group_addr_ = const_cast<void *>(group_addr);
 
   std::string group_type_name = "unknown";
@@ -515,7 +519,11 @@ bool SYMBOL_CONCAT_3(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record =
-    [](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
+    [&node_ptr](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
+      auto node_handle = node_ptr->get_rcl_node_handle();
+      if (!context.get_controller().is_allowed_node(node_handle)) {
+        return;
+      }
       tracepoint(
         TRACEPOINT_PROVIDER, add_callback_group_static_executor, obj, group_addr, group_type_name,
         init_time);
@@ -539,11 +547,6 @@ bool SYMBOL_CONCAT_3(
   auto ret = ((functionT)orig_func)(obj, group_ptr, node_ptr, weak_groups_to_nodes);
 
   if (!context.get_controller().is_allowed_process()) {
-    return ret;
-  }
-
-  auto node_handle = node_ptr->get_rcl_node_handle();
-  if (!context.get_controller().is_allowed_node(node_handle)) {
     return ret;
   }
 
@@ -634,19 +637,6 @@ void _ZN6rclcpp13CallbackGroup16add_subscriptionESt10shared_ptrINS_16Subscriptio
   record(obj, subscription_handle, now);
 }
 
-
-class OwnService: public rclcpp::ServiceBase
-{
-public:
-  explicit OwnService(std::shared_ptr<rcl_node_t> node_handle)
-    : ServiceBase(node_handle) {}
-
-  // Wrapper to access protected member functions of the inherited class
-  rcl_node_t * wrap_get_rcl_node_handle() {
-    return this->get_rcl_node_handle();
-  }
-};
-
 // rclcpp::CallbackGroup::add_service(std::shared_ptr<rclcpp::ServiceBase>)
 void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
   void * obj, const rclcpp::ServiceBase::SharedPtr service_ptr)
@@ -656,7 +646,10 @@ void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
   static auto & context = Singleton<Context>::get_instance();
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
-  static auto record = [](const void * obj, const void * service_handle, int64_t init_time) {
+  static auto record = [&service_ptr](const void * obj, const void * service_handle, int64_t init_time) {
+    if (!context.get_controller().is_allowed_service_handle(service_handle)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, callback_group_add_service, obj, service_handle, init_time);
 
 #ifdef DEBUG_OUTPUT
@@ -672,12 +665,6 @@ void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
     return;
   }
 
-  std::shared_ptr<OwnService> own_service_ptr = std::dynamic_pointer_cast<OwnService>(service_ptr);
-  auto node_handle = own_service_ptr->wrap_get_rcl_node_handle();
-  if (!context.get_controller().is_allowed_node(node_handle)) {
-    return;
-  }
-
   if (!data_container.is_assigned_callback_group_add_service()) {
     data_container.assign_callback_group_add_service(record);
   }
@@ -685,20 +672,6 @@ void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
   data_container.store_callback_group_add_service(obj, service_handle, now);
   record(obj, service_handle, now);
 }
-
-class OwnClient: public rclcpp::ClientBase
-{
-public:
-  explicit OwnClient(
-    rclcpp::node_interfaces::NodeBaseInterface * node_base,
-    rclcpp::node_interfaces::NodeGraphInterface::SharedPtr node_graph
-    ) : ClientBase(node_base, node_graph) {}
-
-  // Wrapper to access protected member functions of the inherited class
-  rcl_node_t * wrap_get_rcl_node_handle() {
-    return this->get_rcl_node_handle();
-  }
-};
 
 // rclcpp::CallbackGroup::add_client(std::shared_ptr<rclcpp::ClientBase>)
 void _ZN6rclcpp13CallbackGroup10add_clientESt10shared_ptrINS_10ClientBaseEE(
@@ -710,6 +683,9 @@ void _ZN6rclcpp13CallbackGroup10add_clientESt10shared_ptrINS_10ClientBaseEE(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record = [](const void * obj, const void * client_handle, int64_t init_time) {
+    if (!context.get_controller().is_allowed_client_handle(client_handle)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, callback_group_add_client, obj, client_handle, init_time);
 
 #ifdef DEBUG_OUTPUT
@@ -722,12 +698,6 @@ void _ZN6rclcpp13CallbackGroup10add_clientESt10shared_ptrINS_10ClientBaseEE(
   ((functionT)orig_func)(obj, client_ptr);
   
   if (!context.get_controller().is_allowed_process()) {
-    return;
-  }
-
-  std::shared_ptr<OwnClient> own_client_ptr = std::dynamic_pointer_cast<OwnClient>(client_ptr);
-  auto node_handle = own_client_ptr->wrap_get_rcl_node_handle();
-  if (!context.get_controller().is_allowed_node(node_handle)) {
     return;
   }
 

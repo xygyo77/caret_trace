@@ -92,12 +92,17 @@ public:
   /// @brief Register binding information for ros_trace_rcl_lifecycle_state_machine_init tracepoint.
   /// @param state_machine  Address of the lifecycle state machine.
   /// @param node_handle  Address of the node handle.
-  void add_state_machine(const void * state_machine, const void * node_handle)
+  void add_state_machine(const void * state_machine, const void * node_handle);
 
   /// @brief Register binding information for rclcpp_service_callback_added tracepoint.
   /// @param service_handle  Address of the servece handle.
   /// @param node_handle  Address of the node handle instance.
   void add_service_handle(const void * service_handle, const void * node_handle);
+
+  /// @brief Register binding information for rcl_client_init tracepoint.
+  /// @param client_handle  Address of the client handle.
+  /// @param node_handle  Address of the node handle instance.
+  void add_client_handle(const void * client_handle, const void * node_handle);
 
   /// @brief Check if trace point is a enabled callback
   /// @param callback
@@ -150,6 +155,11 @@ public:
   /// @return True if the buffer is enabled, false otherwise.
   bool is_allowed_service_handle(const void * service_handle);
 
+  /// @brief Check if trace point is a enabled callback
+  /// @param client_handle Address of the client handle.
+  /// @return True if the buffer is enabled, false otherwise.
+  bool is_allowed_client_handle(const void * client_handle);
+
   /// @brief Check if trace point is a not ignore process
   /// @return True if the process is enabled, false otherwise.
   bool is_allowed_process();
@@ -193,9 +203,14 @@ private:
 
   std::unordered_map<const void *, const void *> buffer_to_ipbs_;
   std::unordered_map<const void *, const void *> ipb_to_subscriptions_;
-  std::unordered_map<const void *, const void *> state_machine_to_node_handles_;
   std::unordered_map<const void *, bool> allowed_buffers_;
   std::unordered_map<const void *, bool> allowed_ipbs;
+  
+  std::unordered_map<const void *, const void *> state_machine_to_node_handles_;
+  std::unordered_map<const void *, const void *> service_handle_to_node_handles_;
+  std::unordered_map<const void *, bool> allowed_service_handle_;
+  std::unordered_map<const void *, const void *> client_handle_to_node_handles_;
+  std::unordered_map<const void *, bool> allowed_client_handle_;
 };
 
 #endif  // CARET_TRACE__TRACING_CONTROLLER_HPP_
