@@ -46,6 +46,8 @@
 #undef ros_trace_rmw_publisher_init
 #undef ros_trace_rmw_subscription_init
 
+#include "caret_trace/DEBUG.hpp"
+
 // #define DEBUG_OUTPUT
 
 #define DEFINE_ORIG_FUNC(TP_NAME) TP_NAME = dlsym(RTLD_NEXT, #TP_NAME)
@@ -258,6 +260,10 @@ void ros_trace_rcl_node_init(
 #endif
   };
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
 
   check_and_run_trace_node();
@@ -318,6 +324,10 @@ void ros_trace_rcl_subscription_init(
 #endif
   };
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
 
   controller.add_subscription_handle(node_handle, subscription_handle, topic_name);
@@ -363,6 +373,10 @@ void ros_trace_rclcpp_subscription_init(
 #endif
   };
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
   check_and_run_trace_node();
 
@@ -403,6 +417,10 @@ void ros_trace_rclcpp_subscription_callback_added(
 #endif
   };
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
   check_and_run_trace_node();
 
@@ -440,6 +458,10 @@ void ros_trace_rclcpp_timer_callback_added(const void * timer_handle, const void
 #endif
   };
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
   check_and_run_trace_node();
 
@@ -475,6 +497,10 @@ void ros_trace_rclcpp_timer_link_node(const void * timer_handle, const void * no
 #endif
   };
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
   check_and_run_trace_node();
 
@@ -496,6 +522,10 @@ void ros_trace_callback_start(const void * callback, bool is_intra_process)
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
   using functionT = void (*)(const void *, bool);
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_callback(callback) &&
     context.is_recording_allowed())
   {
@@ -515,6 +545,11 @@ void ros_trace_callback_end(const void * callback)
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
 
   using functionT = void (*)(const void *);
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_callback(callback) &&
     context.is_recording_allowed())
   {
@@ -538,6 +573,11 @@ void ros_trace_dispatch_subscription_callback(
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
 
   using functionT = void (*)(const void *, const void *, const uint64_t, const uint64_t);
+  
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_callback(callback) &&
     context.is_recording_allowed())
   {
@@ -563,6 +603,11 @@ void ros_trace_dispatch_intra_process_subscription_callback(
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
 
   using functionT = void (*)(const void *, const void *, const uint64_t);
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_callback(callback) &&
     context.is_recording_allowed())
   {
@@ -586,6 +631,11 @@ void ros_trace_rclcpp_publish(
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
 
   using functionT = void (*)(const void *, const void *);
+  
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_publisher_handle(publisher_handle) &&
     context.is_recording_allowed())
   {
@@ -607,6 +657,10 @@ void ros_trace_rclcpp_intra_publish(
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
 
   using functionT = void (*)(const void *, const void *);
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
 
   if (controller.is_allowed_publisher_handle(publisher_handle) &&
     context.is_recording_allowed())
@@ -634,10 +688,18 @@ void ros_trace_rcl_timer_init(
   }
 
   static auto record = [](const void * timer_handle, int64_t period, int64_t init_time) {
+    if (!context.get_controller().is_allowed_timer_handle(timer_handle)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rcl_timer_init, timer_handle, period, init_time);
   };
 
   auto now = clock.now();
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   if (!data_container.is_assigned_rcl_timer_init()) {
     data_container.assign_rcl_timer_init(record);
   }
@@ -662,6 +724,10 @@ void ros_trace_rcl_init(
   static auto record = [](  const void * context_handle, int64_t init_time) {
     tracepoint(TRACEPOINT_PROVIDER, rcl_init, context_handle, init_time);
   };
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
 
   auto now = clock.now();
   if (!data_container.is_assigned_rcl_init()) {
@@ -697,9 +763,16 @@ void ros_trace_rcl_publisher_init(
   const size_t queue_depth,
   int64_t init_time
 ) {
+    if (!controller.is_allowed_publisher_handle(publisher_handle)){
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rcl_publisher_init, publisher_handle, node_handle,
     rmw_publisher_handle, topic_name, queue_depth, init_time);
   };
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
 
   auto now = clock.now();
   controller.add_publisher_handle(node_handle, publisher_handle, topic_name);
@@ -741,6 +814,11 @@ void ros_trace_rcl_publish(
   static auto & controller = context.get_controller();
 
   using functionT = void (*)(const void *, const void *);
+  
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_publisher_handle(publisher_handle) && context.is_recording_allowed()) {
     ((functionT) orig_func)(publisher_handle, message);
     trace_filter_is_rcl_publish_recorded = true;
@@ -768,6 +846,9 @@ void ros_trace_rcl_service_init(
   const void * rmw_service_handle,
   const char * service_name,
   int64_t init_time) {
+    if (!context.get_controller().is_allowed_node(node_handle)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rcl_service_init, service_handle,
     node_handle, rmw_service_handle, service_name, init_time);
 
@@ -780,12 +861,19 @@ void ros_trace_rcl_service_init(
 #endif
   };
 
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
+
   if (!data_container.is_assigned_rcl_service_init()) {
     data_container.assign_rcl_service_init(record);
   }
 
   check_and_run_trace_node();
+
+  context.get_controller().add_service_handle(service_handle, node_handle);
 
   data_container.store_rcl_service_init(
     service_handle, node_handle, rmw_service_handle, service_name, now);
@@ -800,6 +888,9 @@ void ros_trace_rclcpp_service_callback_added(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record = [](const void * service_handle, const char * callback, int64_t init_time) {
+    if (!context.get_controller().is_allowed_service_handle(service_handle)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rclcpp_service_callback_added,
       service_handle, callback, init_time);
 
@@ -809,6 +900,11 @@ void ros_trace_rclcpp_service_callback_added(
       callback << std::endl;
 #endif
   };
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
 
   check_and_run_trace_node();
@@ -835,6 +931,9 @@ void ros_trace_rcl_client_init(
   const void * rmw_client_handle,
   const char * service_name,
   int64_t init_time) {
+    if (!context.get_controller().is_allowed_node(node_handle)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rcl_client_init, client_handle, node_handle,
       rmw_client_handle, service_name, init_time);
 
@@ -846,7 +945,14 @@ void ros_trace_rcl_client_init(
       service_name << std::endl;
 #endif
   };
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
+  
+  context.get_controller().add_client_handle(client_handle, node_handle);
 
   if (!data_container.is_assigned_rcl_client_init()) {
     data_container.assign_rcl_client_init(record);
@@ -886,6 +992,11 @@ void ros_trace_rclcpp_callback_register(
       symbol << std::endl;
 #endif
   };
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
 
   check_and_run_trace_node();
@@ -932,6 +1043,11 @@ void ros_trace_do_rclcpp_callback_register(
       symbol << std::endl;
 #endif
   };
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
 
   check_and_run_trace_node();
@@ -955,6 +1071,9 @@ void ros_trace_rcl_lifecycle_state_machine_init(
     const void * node_handle,
     const void * state_machine,
     int64_t init_time) {
+      if (!context.get_controller().is_allowed_node(node_handle)) {
+        return;
+      }
     tracepoint(TRACEPOINT_PROVIDER, rcl_lifecycle_state_machine_init,
       node_handle, state_machine, init_time);
 
@@ -964,9 +1083,16 @@ void ros_trace_rcl_lifecycle_state_machine_init(
       state_machine << std::endl;
 #endif
   };
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   auto now = clock.now();
 
   check_and_run_trace_node();
+    
+  context.get_controller().add_state_machine(state_machine, node_handle);
 
   record(node_handle, state_machine, now);
 }
@@ -980,9 +1106,15 @@ void ros_trace_rcl_lifecycle_transition(
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
   using functionT = void (*)(const void *, const char *, const char *);
 
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   if (context.is_recording_allowed()) {
     ((functionT) orig_func)(state_machine, start_label, goal_label);
-
+    if (!context.get_controller().is_allowed_state_machine(state_machine)) {
+      return;
+    }
 #ifdef DEBUG_OUTPUT
     std::cerr << "rcl_lifecycle_transition," <<
       state_machine << "," <<
@@ -999,6 +1131,11 @@ void ros_trace_message_construct(
   static auto & context = Singleton<Context>::get_instance();
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
   using functionT = void (*)(const void *, const void *);
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
+
   if (context.is_recording_allowed()) {
     ((functionT) orig_func)(original_message, constructed_message);
 
@@ -1065,6 +1202,11 @@ void ros_trace_rmw_take(
   static auto & controller = context.get_controller();
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
   using functionT = void (*)(const void *, const void *, int64_t, const bool);
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_rmw_subscription_handle(rmw_subscription_handle) &&
     context.is_recording_allowed())
   {
@@ -1085,6 +1227,13 @@ void ros_trace_rmw_publish(
   const void * message
 )
 {
+  static auto & context = Singleton<Context>::get_instance();
+  static auto & controller = context.get_controller();
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (trace_filter_is_rcl_publish_recorded) {
     tracepoint(TRACEPOINT_PROVIDER, dds_write, message);
 #ifdef DEBUG_OUTPUT
@@ -1132,12 +1281,18 @@ void ros_trace_rclcpp_buffer_to_ipb(
   static auto & data_container = context.get_data_container();
   static auto & controller = context.get_controller();
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
   controller.add_buffer(buffer, ipb);
   static auto record = [](
     const void * buffer,
     const void * ipb,
     int64_t init_timestamp
   ){
+    if (!controller.is_allowed_buffer(buffer)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rclcpp_buffer_to_ipb,
       buffer, ipb, init_timestamp);
 
@@ -1170,12 +1325,18 @@ void ros_trace_rclcpp_ipb_to_subscription(
   static auto & data_container = context.get_data_container();
   static auto & controller = context.get_controller();
 
+  if (!controller.is_allowed_process()) {
+    return;
+  }
   controller.add_ipb(ipb, subscription);
   static auto record = [](
     const void * ipb,
     const void * subscription,
     int64_t init_timestamp
   ){
+    if (!controller.is_allowed_ipb(ipb)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rclcpp_ipb_to_subscription,
       ipb, subscription, init_timestamp);
 
@@ -1211,6 +1372,9 @@ void ros_trace_rclcpp_construct_ring_buffer(
     uint64_t capacity,
     int64_t init_timestamp
   ){
+    if (!context.get_controller().is_allowed_buffer(buffer)) {
+      return;
+    }
     tracepoint(TRACEPOINT_PROVIDER, rclcpp_construct_ring_buffer,
       buffer, capacity, init_timestamp);
 
@@ -1220,6 +1384,10 @@ void ros_trace_rclcpp_construct_ring_buffer(
     capacity << std::endl;
 #endif
   };
+
+  if (!context.get_controller().is_allowed_process()) {
+    return;
+  }
 
   auto now = clock.now();
 
@@ -1245,6 +1413,11 @@ void ros_trace_rclcpp_ring_buffer_enqueue(
   static auto & controller = context.get_controller();
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
   using functionT = void (*)(const void *, const uint64_t, const uint64_t, bool);
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_buffer(buffer) &&
     context.is_recording_allowed())
   {
@@ -1270,6 +1443,11 @@ void ros_trace_rclcpp_ring_buffer_dequeue(
   static auto & controller = context.get_controller();
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
   using functionT = void (*)(const void *, const uint64_t, const uint64_t);
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_buffer(buffer) &&
     context.is_recording_allowed())
   {
@@ -1291,6 +1469,11 @@ void ros_trace_rclcpp_ring_buffer_clear(
   static auto & context = Singleton<Context>::get_instance();
   static auto & controller = context.get_controller();
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+
   if (controller.is_allowed_buffer(buffer) &&
     context.is_recording_allowed())
   {

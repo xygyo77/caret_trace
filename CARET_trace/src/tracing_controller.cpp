@@ -29,10 +29,13 @@
 #include <unordered_set>
 #include <utility>
 
+#include "caret_trace/DEBUG.hpp"
+
 #define SELECT_NODES_ENV_NAME "CARET_SELECT_NODES"
 #define IGNORE_NODES_ENV_NAME "CARET_IGNORE_NODES"
 #define SELECT_TOPICS_ENV_NAME "CARET_SELECT_TOPICS"
 #define IGNORE_TOPICS_ENV_NAME "CARET_IGNORE_TOPICS"
+#define IGNORE_PROCESSES_ENV_NAME "CARET_IGNORE_PROCESSES"
 
 bool partial_match(std::unordered_set<std::string> set, std::string target_name)
 {
@@ -120,6 +123,7 @@ TracingController::TracingController(bool use_log)
   ignored_node_names_(get_env_vars(IGNORE_NODES_ENV_NAME)),
   selected_topic_names_(get_env_vars(SELECT_TOPICS_ENV_NAME)),
   ignored_topic_names_(get_env_vars(IGNORE_TOPICS_ENV_NAME)),
+  ignored_process_names_(get_env_vars(IGNORE_PROCESSES_ENV_NAME)),
   select_enabled_(selected_topic_names_.size() > 0 || selected_node_names_.size() > 0),
   ignore_enabled_(ignored_topic_names_.size() > 0 || ignored_node_names_.size() > 0),
   use_log_(use_log)
@@ -146,10 +150,19 @@ TracingController::TracingController(bool use_log)
     }
   }
 
+  if (ignored_process_names_.size() > 0) {
+    info(IGNORE_PROCESSES_ENV_NAME + std::string(": ") + get_env_var(IGNORE_PROCESSES_ENV_NAME));
+  }
+
+  is_ignored_process_ =
+      ignored_process_names_.size() > 0 &&
+      partial_match(ignored_process_names_, std::string(program_invocation_short_name));
+
   check_condition_set(selected_node_names_, use_log);
   check_condition_set(ignored_node_names_, use_log);
   check_condition_set(selected_topic_names_, use_log);
   check_condition_set(ignored_topic_names_, use_log);
+  check_condition_set(ignored_process_names_, use_log);
 }
 
 void TracingController::debug(std::string message) const
@@ -233,6 +246,26 @@ bool TracingController::is_allowed_node(const void * node_handle)
     return !is_ignored_node;
   }
   return true;
+}
+
+bool TracingController::is_allowed_timer_handle(const void * timer_handle)
+{
+  std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+  for (const auto& pair : timer_handle_to_node_handles_) {
+    if (pair.second == timer_handle) {
+      return is_allowed_node(pair.first);
+    }
+  }
+  // not found
+  return true;
+}
+
+bool TracingController::is_allowed_state_machine(const void * state_machine)
+{
+  std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+
+  auto node_handle = state_machine_to_node_handles_[state_machine];
+  return is_allowed_node(node_handle);
 }
 
 bool TracingController::is_allowed_subscription_handle(const void * subscription_handle)
@@ -428,6 +461,147 @@ bool TracingController::is_allowed_buffer(const void * buffer)
   }
 }
 
+bool TracingController::is_allowed_ipb(const void * ipb)
+{
+  std::unordered_map<const void *, bool>::iterator is_allowed_it;
+  {
+    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+    is_allowed_it = allowed_ipbs.find(ipb);
+    if (is_allowed_it != allowed_ipbs.end()) {
+      return is_allowed_it->second;
+    }
+  }
+
+  {
+    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+    auto subscription = ipb_to_subscriptions_[ipb];
+    auto subscription_handle = subscription_to_subscription_handles_[subscription];
+    auto node_handle = subscription_handle_to_node_handles_[subscription_handle];
+    auto node_name = node_handle_to_node_names_[node_handle];
+    auto topic_name = subscription_handle_to_topic_names_[subscription_handle];
+
+    if (select_enabled_) {
+      auto is_selected_topic = partial_match(selected_topic_names_, topic_name);
+      auto is_selected_node = partial_match(selected_node_names_, node_name);
+
+      if (selected_topic_names_.size() > 0 && is_selected_topic) {
+        allowed_ipbs.insert(std::make_pair(ipb, true));
+        return true;
+      }
+      if (selected_node_names_.size() > 0 && is_selected_node) {
+        allowed_ipbs.insert(std::make_pair(ipb, true));
+        return true;
+      }
+
+      allowed_ipbs.insert(std::make_pair(ipb, false));
+      return false;
+    }
+    if (ignore_enabled_) {
+      auto is_ignored_node = partial_match(ignored_node_names_, node_name);
+      auto is_ignored_topic = partial_match(ignored_topic_names_, topic_name);
+
+      if (ignored_node_names_.size() > 0 && is_ignored_node) {
+        allowed_ipbs.insert(std::make_pair(ipb, false));
+        return false;
+      }
+      if (ignored_topic_names_.size() > 0 && is_ignored_topic) {
+        allowed_ipbs.insert(std::make_pair(ipb, false));
+        return false;
+      }
+      allowed_ipbs.insert(std::make_pair(ipb, true));
+      return true;
+    }
+    allowed_ipbs.insert(std::make_pair(ipb, true));
+    return true;
+  }
+}
+
+bool TracingController::is_allowed_service_handle(const void * service_handle)
+{
+  std::unordered_map<const void *, bool>::iterator is_allowed_it;
+  {
+    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+    is_allowed_it = allowed_service_handle_.find(service_handle);
+    if (is_allowed_it != allowed_service_handle_.end()) {
+      return is_allowed_it->second;
+    }
+  }
+
+  {
+    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+    auto node_handle = service_handle_to_node_handles_[service_handle];
+    auto node_name = node_handle_to_node_names_[node_handle];
+
+    if (select_enabled_) {
+      auto is_selected_node = partial_match(selected_node_names_, node_name);
+
+      if (is_selected_node && selected_node_names_.size() > 0) {
+        allowed_service_handle_.insert(std::make_pair(service_handle, true));
+        return true;
+      }
+
+      allowed_service_handle_.insert(std::make_pair(service_handle, false));
+      return false;
+    } else if (ignore_enabled_) {
+      auto is_ignored_node = partial_match(ignored_node_names_, node_name);
+
+      if (is_ignored_node && ignored_node_names_.size() > 0) {
+        allowed_service_handle_.insert(std::make_pair(service_handle, false));
+        return false;
+      }
+      allowed_service_handle_.insert(std::make_pair(service_handle, true));
+      return true;
+    }
+    allowed_service_handle_.insert(std::make_pair(service_handle, true));
+    return true;
+  }
+}
+
+bool TracingController::is_allowed_client_handle(const void * client_handle) {
+  std::unordered_map<const void *, bool>::iterator is_allowed_it;
+  {
+    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+    is_allowed_it = allowed_client_handle_.find(client_handle);
+    if (is_allowed_it != allowed_client_handle_.end()) {
+      return is_allowed_it->second;
+    }
+  }
+  
+  {
+    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+    auto node_handle = client_handle_to_node_handles_[client_handle];
+    auto node_name = node_handle_to_node_names_[node_handle];
+
+    if (select_enabled_) {
+      auto is_selected_node = partial_match(selected_node_names_, node_name);
+
+      if (is_selected_node && selected_node_names_.size() > 0) {
+        allowed_client_handle_.insert(std::make_pair(client_handle, true));
+        return true;
+      }
+
+      allowed_client_handle_.insert(std::make_pair(client_handle, false));
+      return false;
+    } else if (ignore_enabled_) {
+      auto is_ignored_node = partial_match(ignored_node_names_, node_name);
+
+      if (is_ignored_node && ignored_node_names_.size() > 0) {
+        allowed_client_handle_.insert(std::make_pair(client_handle, false));
+        return false;
+      }
+      allowed_client_handle_.insert(std::make_pair(client_handle, true));
+      return true;
+    }
+    allowed_client_handle_.insert(std::make_pair(client_handle, true));
+    return true;
+  }
+}
+
+bool TracingController::is_allowed_process()
+{
+  return !is_ignored_process_;
+}
+
 std::string TracingController::to_node_name(const void * callback)
 {
   do {
@@ -572,4 +746,22 @@ void TracingController::add_ipb(const void * ipb, const void * subscription)
 {
   std::lock_guard<std::shared_timed_mutex> lock(mutex_);
   ipb_to_subscriptions_.insert(std::make_pair(ipb, subscription));
+}
+
+void TracingController::add_state_machine(const void * state_machine, const void * node_handle)
+{
+  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+  state_machine_to_node_handles_.insert(std::make_pair(state_machine, node_handle));
+}
+
+void TracingController::add_service_handle(const void * service_handle, const void * node_handle)
+{
+  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+  service_handle_to_node_handles_.insert(std::make_pair(service_handle, node_handle));
+}
+
+void TracingController::add_client_handle(const void * client_handle, const void * node_handle)
+{
+  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+  client_handle_to_node_handles_.insert(std::make_pair(client_handle, node_handle));
 }

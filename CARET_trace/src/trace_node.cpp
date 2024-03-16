@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "caret_trace/trace_node.hpp"
+#include "caret_trace/DEBUG.hpp"
 
 #include "caret_trace/clock.hpp"
 #include "caret_trace/context.hpp"
@@ -46,6 +47,7 @@ TraceNode::TraceNode(
   execute_timer_on_run_(execute_timer_on_run)
 {
   set_log_level(level);
+  D("init")
 
   auto sub_qos = rclcpp::QoS(1).reliable();
   start_sub_ = create_subscription<caret_msgs::msg::Start>(
@@ -168,6 +170,7 @@ void TraceNode::publish_status(TRACE_STATUS status) const
   auto msg = std::make_unique<caret_msgs::msg::Status>();
   msg->caret_node_name = get_name();
   msg->status = static_cast<int>(status);
+  D(msg->status)
   status_pub_->publish(std::move(msg));
 }
 
