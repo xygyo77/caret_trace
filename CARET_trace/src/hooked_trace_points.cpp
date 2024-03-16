@@ -46,7 +46,7 @@
 
 #include "caret_trace/keys_set.hpp"
 
-#define D(X) {std::cout << __func__ << ": " << __LINE__ << X << std::endl;}
+#include "caret_trace/DEBUG.hpp"
 
 #define SYMBOL_CONCAT_2(x, y) x##y
 #define SYMBOL_CONCAT_3(x, y, z) x##y##z
@@ -425,7 +425,7 @@ void _ZN6rclcpp9executors28StaticSingleThreadedExecutorC1ERKNS_15ExecutorOptions
   }
 
   auto entities_collector_ptr = static_cast<const void *>(exec_ptr->entities_collector_.get());
-  data_container.store_add_callback_group_static_executor(
+  data_container.store_construct_static_executor(
     obj, entities_collector_ptr, "static_single_threaded_executor", now);
   record(obj, entities_collector_ptr, "static_single_threaded_executor", now);
 }
@@ -451,15 +451,18 @@ void SYMBOL_CONCAT_3(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record =
-    [&node_ptr](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
-      // After type conversion with static_cast, convert to shared_ptr with static_pointer_cast
-      //auto node_base_ptr = static_cast<const rclcpp::node_interfaces::NodeBaseInterface *>(node_ptr);
-      auto node_handle = node_ptr->get_rcl_node_handle();
+#if 0
+    [](const void * obj, const void * group_addr, const char * group_type_name, const void * node_handle, int64_t init_time) {
       if (!context.get_controller().is_allowed_node(node_handle)) {
         return;
       }
       tracepoint(
+        TRACEPOINT_PROVIDER, add_callback_group, obj, group_addr, group_type_name, node_handle, init_time);
+#else
+    [](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
+      tracepoint(
         TRACEPOINT_PROVIDER, add_callback_group, obj, group_addr, group_type_name, init_time);
+#endif
 
 #ifdef DEBUG_OUTPUT
       std::cerr << "add_callback_group," << obj << "," << group_addr << "," << group_type_name
@@ -495,11 +498,20 @@ void SYMBOL_CONCAT_3(
     group_type_name = "reentrant";
   }
 
+#if 0
+  auto node_handle = node_ptr->get_rcl_node_handle();
+  data_container.store_add_callback_group(obj, group_addr, group_type_name.c_str(), node_handle, now);
+#else
   data_container.store_add_callback_group(obj, group_addr, group_type_name.c_str(), now);
+#endif
   if (!recorded_args.has(obj, group_addr_, node_ptr_)) {
     recorded_args.insert(obj, group_addr_, node_ptr_);
 
+#if 0
+    record(obj, group_addr, group_type_name.c_str(), node_handle, now);
+#else
     record(obj, group_addr, group_type_name.c_str(), now);
+#endif
   }
 }
 
@@ -519,14 +531,20 @@ bool SYMBOL_CONCAT_3(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record =
-    [&node_ptr](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
-      auto node_handle = node_ptr->get_rcl_node_handle();
+#if 0
+    [](const void * obj, const void * group_addr, const char * group_type_name, const void * node_handle, int64_t init_time) {
       if (!context.get_controller().is_allowed_node(node_handle)) {
         return;
       }
       tracepoint(
+        TRACEPOINT_PROVIDER, add_callback_group_static_executor, obj, group_addr, group_type_name, node_handle,
+        init_time);
+#else
+    [](const void * obj, const void * group_addr, const char * group_type_name, int64_t init_time) {
+      tracepoint(
         TRACEPOINT_PROVIDER, add_callback_group_static_executor, obj, group_addr, group_type_name,
         init_time);
+#endif
 
 #ifdef DEBUG_OUTPUT
       std::cerr << "add_callback_group_static_executor," << obj << "," << group_addr << ","
@@ -554,9 +572,16 @@ bool SYMBOL_CONCAT_3(
     data_container.assign_add_callback_group_static_executor(record);
   }
 
+#if 0
+  auto node_handle = node_ptr->get_rcl_node_handle();
+  data_container.store_add_callback_group_static_executor(
+    obj, group_addr, group_type_name.c_str(), node_handle, now);
+  record(obj, group_addr, group_type_name.c_str(), node_handle, now);
+#else
   data_container.store_add_callback_group_static_executor(
     obj, group_addr, group_type_name.c_str(), now);
   record(obj, group_addr, group_type_name.c_str(), now);
+#endif
 
   return ret;
 }
@@ -646,7 +671,7 @@ void _ZN6rclcpp13CallbackGroup11add_serviceESt10shared_ptrINS_11ServiceBaseEE(
   static auto & context = Singleton<Context>::get_instance();
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
-  static auto record = [&service_ptr](const void * obj, const void * service_handle, int64_t init_time) {
+  static auto record = [](const void * obj, const void * service_handle, int64_t init_time) {
     if (!context.get_controller().is_allowed_service_handle(service_handle)) {
       return;
     }

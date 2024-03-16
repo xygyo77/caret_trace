@@ -181,6 +181,8 @@ private:
   const bool select_enabled_;
   const bool ignore_enabled_;
 
+  bool is_ignored_process_;
+
   const bool use_log_;  // for test
 
   std::unordered_map<const void *, const void *> subscription_handle_to_node_handles_;

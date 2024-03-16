@@ -46,7 +46,7 @@
 #undef ros_trace_rmw_publisher_init
 #undef ros_trace_rmw_subscription_init
 
-#define D(X) {std::cout << __func__ << ": " << __LINE__ << X << std::endl;}
+#include "caret_trace/DEBUG.hpp"
 
 // #define DEBUG_OUTPUT
 
@@ -950,9 +950,9 @@ void ros_trace_rcl_client_init(
     return;
   }
 
-  context.get_controller().add_client_handle(client_handle, node_handle);
-
   auto now = clock.now();
+  
+  context.get_controller().add_client_handle(client_handle, node_handle);
 
   if (!data_container.is_assigned_rcl_client_init()) {
     data_container.assign_rcl_client_init(record);
@@ -1088,11 +1088,11 @@ void ros_trace_rcl_lifecycle_state_machine_init(
     return;
   }
 
-  context.get_controller().add_state_machine(state_machine, node_handle);
-
   auto now = clock.now();
 
   check_and_run_trace_node();
+    
+  context.get_controller().add_state_machine(state_machine, node_handle);
 
   record(node_handle, state_machine, now);
 }
