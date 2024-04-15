@@ -588,7 +588,7 @@ void _ZN6rclcpp13CallbackGroup9add_timerESt10shared_ptrINS_9TimerBaseEE(
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
   static auto record = [](const void * obj, const void * timer_handle, int64_t init_time) {
-    if (!context.get_controller().is_allowed_timer_handle(timer_handle, nullptr)) {
+    if (!context.get_controller().is_allowed_timer_handle(timer_handle)) {
       D_IGN("TH", timer_handle, 0, callback_group_add_timer)
       return;
     }

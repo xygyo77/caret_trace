@@ -490,7 +490,7 @@ bool TracingController::is_allowed_process()
   return !is_ignored_process_;
 }
 
-bool TracingController::is_allowed_timer_handle(const void * timer_handle, const void * callback)
+bool TracingController::is_allowed_timer_handle(const void * timer_handle)
 {
   std::unordered_map<const void *, bool>::iterator is_allowed_it;
   {

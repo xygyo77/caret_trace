@@ -463,7 +463,7 @@ void ros_trace_rclcpp_timer_callback_added(const void * timer_handle, const void
     const void * callback,
     int64_t init_time
   ) {
-    if (!controller.is_allowed_timer_handle(timer_handle, callback)) {
+    if (!controller.is_allowed_timer_handle(timer_handle)) {
       D_IGN("TH", timer_handle, callback, rclcpp_timer_callback_added)
       return;
     }
@@ -763,7 +763,7 @@ void ros_trace_rcl_timer_init(
   }
 
   static auto record = [](const void * timer_handle, int64_t period, int64_t init_time) {
-    if (!context.get_controller().is_allowed_timer_handle(timer_handle, nullptr)) {
+    if (!context.get_controller().is_allowed_timer_handle(timer_handle)) {
       D_IGN("TH", timer_handle, period, rcl_timer_init)
       return;
     }
