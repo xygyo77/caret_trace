@@ -31,6 +31,8 @@
 #include <string>
 #include <utility>
 
+#include "caret_trace/DEBUG.hpp"
+
 using std::placeholders::_1;
 
 TraceNode::TraceNode(
@@ -46,7 +48,7 @@ TraceNode::TraceNode(
   execute_timer_on_run_(execute_timer_on_run)
 {
   set_log_level(level);
-
+D("!!!TRACE NODE: START !!!")
   auto sub_qos = rclcpp::QoS(1).reliable();
   start_sub_ = create_subscription<caret_msgs::msg::Start>(
     "/caret/start_record", sub_qos, std::bind(&TraceNode::start_callback, this, _1));
@@ -73,7 +75,8 @@ TraceNode::TraceNode(
     info("Active LTTng session exists.");
     debug("Transitioned to RECORD status.");
   }
-
+D("!!!TRACE NODE: CREATED!!!")
+D(static_cast<int>(status_))
   assert(status_ != TRACE_STATUS::UNINITIALIZED);
 
   publish_status(status_);
@@ -144,6 +147,7 @@ bool TraceNode::is_recording_allowed() const
   // NOTE: Trace points for measurement are recorded without storing in memory.
   // The trace point for measurement should be forbidden in PREPARE state to suppress DISCARDED.
   // No strict control is required, so no mutex is needed.
+  D_STAT()
   return status_ == TRACE_STATUS::RECORD;
 }
 
@@ -219,6 +223,7 @@ void TraceNode::timer_callback()
     status_ = TRACE_STATUS::RECORD;
 
     publish_status(status_);
+D("!!!TRACE NODE: TIMER !!!")
     debug("Transitioned to RECORD status.");
 
     stop_timer();

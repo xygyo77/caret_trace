@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <map>
 #include <shared_mutex>
 static std::shared_mutex smtx; // 共有ミューテックスの宣言
 
@@ -140,6 +141,22 @@ static void extractc_fn(const char* symbol, char* fn, size_t bufSize) {
             std::cout << buf.str(); \
             once++; \
           } \
+        }
+
+static std::map<int, std::string> stat_map = { 
+  {0, "[UNINITIALIZED]"},
+  {1, "[WAIT         ]"},
+  {2, "[PREPARE      ]"},
+  {3, "[RECORD       ]"}
+};
+
+#define D_STAT() { \
+          auto stat = stat_map[static_cast<int>(status_)]; \
+          std::shared_lock<std::shared_mutex> lock(smtx); \
+          std::ostringstream buf; \
+          buf << std::setbase(10) << getpid() << "/ " << gettid() << ": "; \
+          buf << stat << __func__ << ": " << __LINE__ << std::endl; \
+          std::cout << buf.str(); \
         }
 
 #define SEL 1

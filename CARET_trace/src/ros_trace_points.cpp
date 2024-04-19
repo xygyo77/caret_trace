@@ -156,8 +156,10 @@ void run_caret_trace_node()
   }
   // Set global arguments to false to prevent the node to be generated from being renamed.
   option.use_global_arguments(false);
+D("!!!TRACE NODE: CALL!!!")
   auto trace_node = std::make_shared<TraceNode>(node_name_base, option, lttng, data_container);
   RCLCPP_INFO(trace_node->get_logger(), "%s started", trace_node->get_fully_qualified_name());
+D("!!!TRACE NODE: DONE!!!")
 
   ignore_rcl_timer_init = is_python3_command();
 
@@ -185,6 +187,7 @@ void check_and_run_trace_node()
     if (!context.is_node_assigned() && !context.is_node_initializing.load()) {
       // Only one of the first threads execute this block.
       context.is_node_initializing.store(true);
+D("!!!TRACE NODE: THREAD!!!")
       trace_node_thread = std::make_unique<std::thread>(run_caret_trace_node);
       trace_node_thread->detach();
     }
@@ -648,7 +651,6 @@ void ros_trace_dispatch_intra_process_subscription_callback(
 
   using functionT = void (*)(const void *, const void *, const uint64_t);
 
-D(callback)
   if (!controller.is_allowed_process()) {
     return;
   }
