@@ -79,7 +79,7 @@ bool Context::is_recording_allowed() const
   if (is_node_assigned()) {
     return node_->is_recording_allowed();
   }
-
+D("@@@ TraceNode not started @@@")
   // NOTE: Prohibited to suppress DISCARDED.
   return false;
 }

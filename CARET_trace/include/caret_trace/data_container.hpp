@@ -38,7 +38,7 @@ public:
   /// @return True if record has finished, false otherwise.
   virtual bool record(uint64_t loop_count = 1) = 0;
 
-  /// @brief transitiont recording state.
+  /// @brief transition to recording state.
   virtual void start_recording() = 0;
 
   /// @brief Reset recording state.
@@ -50,7 +50,8 @@ class DataContainer : public DataContainerInterface
 {
 public:
   /// @brief  for add_callback_group trace points.
-  using AddCallbackGroup = ContainerTraits<const void *, const void *, const char *, const void *, int64_t>;
+  using AddCallbackGroup =
+    ContainerTraits<const void *, const void *, const char *, const void *, int64_t>;
 
   /// @brief ContainerTraits for add_callback_group_static_executor trace points.
   using AddCallbackGroupStaticExecutor =

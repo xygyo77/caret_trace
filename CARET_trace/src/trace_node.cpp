@@ -48,7 +48,7 @@ TraceNode::TraceNode(
   execute_timer_on_run_(execute_timer_on_run)
 {
   set_log_level(level);
-D("!!!TRACE NODE: START !!!")
+D("@@@ TRACE NODE: START @@@")
   auto sub_qos = rclcpp::QoS(1).reliable();
   start_sub_ = create_subscription<caret_msgs::msg::Start>(
     "/caret/start_record", sub_qos, std::bind(&TraceNode::start_callback, this, _1));
@@ -75,7 +75,7 @@ D("!!!TRACE NODE: START !!!")
     info("Active LTTng session exists.");
     debug("Transitioned to RECORD status.");
   }
-D("!!!TRACE NODE: CREATED!!!")
+D("@@@ TRACE NODE: CREATED @@@")
 D(static_cast<int>(status_))
   assert(status_ != TRACE_STATUS::UNINITIALIZED);
 
@@ -223,7 +223,7 @@ void TraceNode::timer_callback()
     status_ = TRACE_STATUS::RECORD;
 
     publish_status(status_);
-D("!!!TRACE NODE: TIMER !!!")
+D("@@@ TRACE NODE: TIMER @@@")
     debug("Transitioned to RECORD status.");
 
     stop_timer();

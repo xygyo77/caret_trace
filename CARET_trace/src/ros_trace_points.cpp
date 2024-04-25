@@ -156,14 +156,14 @@ void run_caret_trace_node()
   }
   // Set global arguments to false to prevent the node to be generated from being renamed.
   option.use_global_arguments(false);
-D("!!!TRACE NODE: CALL!!!")
+D("@@@TRACE NODE: CALL @@@")
   auto trace_node = std::make_shared<TraceNode>(node_name_base, option, lttng, data_container);
   RCLCPP_INFO(trace_node->get_logger(), "%s started", trace_node->get_fully_qualified_name());
-D("!!!TRACE NODE: DONE!!!")
 
   ignore_rcl_timer_init = is_python3_command();
 
   context.assign_node(trace_node);
+D("@@@TRACE NODE: DONE @@@")
   auto exec = rclcpp::executors::SingleThreadedExecutor();
   exec.add_node(trace_node);
   exec.spin();
@@ -187,7 +187,7 @@ void check_and_run_trace_node()
     if (!context.is_node_assigned() && !context.is_node_initializing.load()) {
       // Only one of the first threads execute this block.
       context.is_node_initializing.store(true);
-D("!!!TRACE NODE: THREAD!!!")
+D("@@@ TRACE NODE: THREAD @@@")
       trace_node_thread = std::make_unique<std::thread>(run_caret_trace_node);
       trace_node_thread->detach();
     }
@@ -386,7 +386,6 @@ void ros_trace_rclcpp_subscription_init(
 #endif
   };
 
-D("!!! ros_trace_rclcpp_subscription_init")
 D(subscription)
 D(subscription_handle)
   if (!controller.is_allowed_process()) {
@@ -443,7 +442,7 @@ D(subscription)
   auto now = clock.now();
   check_and_run_trace_node();
 
-  controller.add_subscription_callback(subscription, callback);
+  controller.add_subscription_callback(callback, subscription);
 
   if (!data_container.is_assigned_rclcpp_subscription_callback_added()) {
     data_container.assign_rclcpp_subscription_callback_added(record);
@@ -487,7 +486,7 @@ D(timer_handle)
   auto now = clock.now();
   check_and_run_trace_node();
 
-  controller.add_timer_callback(timer_handle, callback);
+  controller.add_timer_callback(callback, timer_handle);
 
   if (!data_container.is_assigned_rclcpp_timer_callback_added()) {
     data_container.assign_rclcpp_timer_callback_added(record);
@@ -686,12 +685,6 @@ void ros_trace_rclcpp_publish(
 
   using functionT = void (*)(const void *, const void *);
 
-  if (publisher_handle == 0) {
-    D("!!! CATION !!!")
-    D(publisher_handle)
-    return;
-  }
-
   if (!controller.is_allowed_process()) {
     return;
   }
@@ -729,12 +722,8 @@ void ros_trace_rclcpp_intra_publish(
     return;
   }
 
-  controller.add_message_publisher_handle(message, publisher_handle);
-
-D(publisher_handle)
-  if (controller.is_allowed_publisher_handle(publisher_handle) &&
-    context.is_recording_allowed())
-  {
+  if (controller.is_allowed_publisher_handle_and_add_message(publisher_handle, message) &&
+      context.is_recording_allowed()) {
     ((functionT) orig_func)(publisher_handle, message);
 #ifdef DEBUG_OUTPUT
     std::cerr << "rclcpp_intra_publish," <<
@@ -1173,8 +1162,7 @@ void ros_trace_rcl_lifecycle_state_machine_init(
     const void * node_handle,
     const void * state_machine,
     int64_t init_time) {
-    if (context.get_controller().is_allowed_state_machine(state_machine) &&
-        context.is_recording_allowed()) {
+    if (context.get_controller().is_allowed_state_machine(state_machine)) {
       tracepoint(TRACEPOINT_PROVIDER, rcl_lifecycle_state_machine_init,
         node_handle, state_machine, init_time);
 #ifdef DEBUG_OUTPUT

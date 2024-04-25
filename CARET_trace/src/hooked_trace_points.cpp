@@ -28,8 +28,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "caret_trace/DEBUG.hpp"
-
 #define TRACEPOINT_DEFINE
 #include "caret_trace/context.hpp"
 #include "caret_trace/singleton.hpp"
@@ -273,8 +271,8 @@ int dds_writecdr_impl(void * wr, void * xp, struct ddsi_serdata * dinp, bool flu
     tracepoint(
       TRACEPOINT_PROVIDER, dds_bind_addr_to_stamp, serialized_message_addr, dinp->timestamp.v);
 #ifdef DEBUG_OUTPUT
-    //std::cerr << "dds_bind_addr_to_stamp," << data << "," << tstamp << std::endl;
-    std::cerr << "dds_bind_addr_to_stamp," << serialized_message_addr << "," << dinp->timestamp.v << std::endl;
+    std::cerr << "dds_bind_addr_to_stamp," << serialized_message_addr << "," << dinp->timestamp.v
+              << std::endl;
 #endif
     D_SEL("OTH", serialized_message_addr, serialized_message_addr, dds_bind_addr_to_stamp)
   }
@@ -454,16 +452,17 @@ void SYMBOL_CONCAT_3(
   _ZN6rclcpp8Executor25add_callback_group_to_map,
   ESt10shared_ptrINS_13CallbackGroupEES1_INS_15node_interfaces17NodeBaseInterface,
   EERSt3mapISt8weak_ptrIS2_ES8_IS5_ESt10owner_lessIS9_ESaISt4pairIKS9_SA_EEEb)(
-  void * obj, rclcpp::CallbackGroup::SharedPtr group_ptr, rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr,
-  const void * weak_groups_to_nodes, bool notify)
+  void * obj, rclcpp::CallbackGroup::SharedPtr group_ptr,
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr node_ptr, const void * weak_groups_to_nodes,
+  bool notify)
 {
   static void * orig_func = dlsym(RTLD_NEXT, __func__);
   static auto & context = Singleton<Context>::get_instance();
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
-  static auto record =
-    [](const void * obj, const void * group_addr, const char * group_type_name, const void * node_handle, int64_t init_time) {
-D(node_handle)
+  static auto record = [](
+                         const void * obj, const void * group_addr, const char * group_type_name,
+                         const void * node_handle, int64_t init_time) {
       if (!context.get_controller().is_allowed_node(node_handle)) {
         D_IGN("NH", node_handle, group_addr, add_callback_group)
         return;
@@ -479,8 +478,9 @@ D(node_handle)
     };
   auto now = clock.now();
 
-  using functionT =
-    void (*)(void *, rclcpp::CallbackGroup::SharedPtr, rclcpp::node_interfaces::NodeBaseInterface::SharedPtr, const void *, bool);
+  using functionT = void (*)(
+    void *, rclcpp::CallbackGroup::SharedPtr, rclcpp::node_interfaces::NodeBaseInterface::SharedPtr,
+    const void *, bool);
   auto group_addr = static_cast<const void *>(group_ptr.get());
   auto node_addr = static_cast<const void *>(node_ptr.get());
 
@@ -508,7 +508,8 @@ D(node_handle)
   }
 
   auto node_handle = static_cast<const void *>(node_ptr->get_rcl_node_handle());
-  data_container.store_add_callback_group(obj, group_addr, group_type_name.c_str(), node_handle, now);
+  data_container.store_add_callback_group(
+    obj, group_addr, group_type_name.c_str(), node_handle, now);
   if (!recorded_args.has(obj, group_addr_, node_addr_)) {
     recorded_args.insert(obj, group_addr_, node_addr_);
 
@@ -531,9 +532,9 @@ bool SYMBOL_CONCAT_3(
   static auto & context = Singleton<Context>::get_instance();
   static auto & clock = context.get_clock();
   static auto & data_container = context.get_data_container();
-  static auto record =
-    [](const void * obj, const void * group_addr, const char * group_type_name, const void * node_handle, int64_t init_time) {
-D(node_handle)
+  static auto record = [](
+                         const void * obj, const void * group_addr, const char * group_type_name,
+                         const void * node_handle, int64_t init_time) {
       if (!context.get_controller().is_allowed_node(node_handle)) {
         D_IGN("NH", node_handle, group_addr, add_callback_group_static_executor)
         return;

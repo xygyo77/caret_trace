@@ -151,12 +151,16 @@ static std::map<int, std::string> stat_map = {
 };
 
 #define D_STAT() { \
+        static int once = 0; \
+        if (once < 5) { \
           auto stat = stat_map[static_cast<int>(status_)]; \
           std::shared_lock<std::shared_mutex> lock(smtx); \
           std::ostringstream buf; \
           buf << std::setbase(10) << getpid() << "/ " << gettid() << ": "; \
           buf << stat << __func__ << ": " << __LINE__ << std::endl; \
           std::cout << buf.str(); \
-        }
+          once++; \
+        } \
+      }
 
 #define SEL 1

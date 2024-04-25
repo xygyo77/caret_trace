@@ -60,9 +60,9 @@ public:
   void add_subscription(const void * subscription, const void * subscription_handle);
 
   /// @brief Register binding information for rclcpp_subscription_callback_added tracepoint hook.
-  /// @param subscription Address of subscription instance.
   /// @param callback Address of callback instance.
-  void add_subscription_callback(const void * subscription, const void * callback);
+  /// @param subscription Address of subscription instance.
+  void add_subscription_callback(const void * callback, const void * subscription);
 
   /// @brief Register binding information for rclcpp_timer_link_node tracepoint hook.
   /// @param timer_handle Address of the timer handle.
@@ -77,9 +77,9 @@ public:
     const void * node_handle, const void * publisher_handle, std::string topic_name);
 
   /// @brief Register binding information for rclcpp_timer_callback_added tracepoint hook.
+  /// @param callback Address of timer callback instance.
   /// @param timer_handle Address of the timer handle.
-  /// @param callback Address of callback instance.
-  void add_timer_callback(const void * timer_handle, const void * callback);
+  void add_timer_callback(const void * timer_callback, const void * timer_handle);
 
   /// @brief Register binding information for rclcpp_buffer_to_ipb tracepoint.
   /// @param buffer  Address of the buffer.
@@ -98,18 +98,18 @@ public:
 
   /// @brief Register binding information for rclcpp_service_callback_added tracepoint.
   /// @param service_handle  Address of the service handle.
-  /// @param node_handle  Address of the node handle instance.
+  /// @param node_handle  Address of the node handle.
   void add_service_handle(const void * service_handle, const void * node_handle);
 
   /// @brief Register binding information for rcl_client_init tracepoint.
   /// @param client_handle  Address of the client handle.
-  /// @param node_handle  Address of the node handle instance.
+  /// @param node_handle  Address of the node handle.
   void add_client_handle(const void * client_handle, const void * node_handle);
 
-  /// @brief Register binding information for intra message tracepoint.
+  /// @brief Registering acceptable and unacceptable message.
   /// @param message  Address of the intra original message.
-  /// @param publisher_handle  publisher_handle  Address of the publisher handle.
-  void add_message_publisher_handle(const void * message, const void * publisher_handle);
+  /// @param is_allowed  True is enabled, false otherwise.
+  void add_allowed_messages(const void * message, bool is_allowed);
 
   /// @brief Check if trace point is a enabled callback
   /// @param callback
@@ -126,6 +126,12 @@ public:
   /// @param publisher_handle  Address of the publisher handle.
   /// @return True if the publisher is enabled, false otherwise.
   bool is_allowed_publisher_handle(const void * publisher_handle);
+
+  /// @brief Check if trace point is a enabled publisher and set to allowed message map
+  /// @param publisher_handle  Address of the publisher handle.
+  /// @param message  Address of the messgae.
+  /// @return True if the publisher is enabled, false otherwise.
+  bool is_allowed_publisher_handle_and_add_message(const void * publisher_handle, const void * message);
 
   /// @brief Check if trace point is a enabled subscription
   /// @param subscription_handle Address of the subscription handle.
@@ -146,34 +152,33 @@ public:
   /// @return True if the process is enabled, false otherwise.
   bool is_allowed_process();
 
-  /// @brief Check if trace point is a enabled node
+  /// @brief Check if trace point is a enabled timer handle
   /// @param timer_handle  Address of the timer handle.
-  /// @param callback  Address of the callback.
   /// @return True if the timer_handle is enabled, false otherwise.
   bool is_allowed_timer_handle(const void * timer_handle);
 
-  /// @brief Check if trace point is a enabled node
+  /// @brief Check if trace point is a enabled state machine
   /// @param state_machine  Address of the lifecycle state machine.
   /// @return True if the state_machine is enabled, false otherwise.
   bool is_allowed_state_machine(const void * state_machine);
 
-  /// @brief Check if trace point is a enabled subscription
+  /// @brief Check if trace point is a enabled ipb
   /// @param buffer Address of the intra-process buffer.
-  /// @return True if the buffer is enabled, false otherwise.
+  /// @return True if the ipb is enabled, false otherwise.
   bool is_allowed_ipb(const void * ipb);
 
-  /// @brief Check if trace point is a enabled callback
+  /// @brief Check if trace point is a enabled service handle
   /// @param service_handle Address of the service handle.
-  /// @return True if the buffer is enabled, false otherwise.
+  /// @return True if the service_handle is enabled, false otherwise.
   bool is_allowed_service_handle(const void * service_handle);
 
-  /// @brief Check if trace point is a enabled callback
+  /// @brief Check if trace point is a enabled client handle
   /// @param client_handle Address of the client handle.
-  /// @return True if the buffer is enabled, false otherwise.
+  /// @return True if the client_handle is enabled, false otherwise.
   bool is_allowed_client_handle(const void * client_handle);
 
-  /// @brief Check if trace point is a enabled message
-  /// @param publisher_handle  Address of the publisher handle.
+  /// @brief Check if trace point is a enabled publisher
+  /// @param message  Address of the message.
   /// @return True if the message is enabled, false otherwise.
   bool is_allowed_message(const void * message);
 
@@ -227,7 +232,7 @@ private:
   std::unordered_map<const void *, bool> allowed_state_machines_;
   
   std::unordered_map<const void *, const void *> service_handle_to_node_handles_;
-  std::unordered_map<const void *, bool> allowed_service_handle_;
+  std::unordered_map<const void *, bool> allowed_service_handles_;
   std::unordered_map<const void *, const void *> client_handle_to_node_handles_;
   std::unordered_map<const void *, bool> allowed_client_handles_;
   
