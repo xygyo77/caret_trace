@@ -251,16 +251,16 @@ D(topic_name)
 
 bool TracingController::is_allowed_node(const void * node_handle)
 {
-  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
-  auto node_name = node_handle_to_node_names_[node_handle];
-  if (node_name.size() == 0) {
+  std::shared_lock<std::shared_timed_mutex> lock(mutex_);  // read lock
+  auto node_name_it = node_handle_to_node_names_.find(node_handle);
+  if (node_name_it == node_handle_to_node_names_.end()) {
     return true;
   }
   if (select_enabled_ && selected_node_names_.size() > 0) {
-    auto is_selected_node = partial_match(selected_node_names_, node_name);
+    auto is_selected_node = partial_match(selected_node_names_, node_name_it->second);
     return is_selected_node;
   } else if (ignore_enabled_ && ignored_node_names_.size() > 0) {
-    auto is_ignored_node = partial_match(ignored_node_names_, node_name);
+    auto is_ignored_node = partial_match(ignored_node_names_, node_name_it->second);
     return !is_ignored_node;
   }
   return true;
@@ -268,21 +268,25 @@ bool TracingController::is_allowed_node(const void * node_handle)
 
 bool TracingController::is_allowed_subscription_handle(const void * subscription_handle)
 {
-  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
-  auto node_handle = subscription_handle_to_node_handles_[subscription_handle];
-  D(node_handle)
-  auto node_name = node_handle_to_node_names_[node_handle];
-  auto topic_name = subscription_handle_to_topic_names_[subscription_handle];
-
-D(node_name)
-D(topic_name)
-  if (node_name.size() == 0 || topic_name.size() == 0) {
+  std::shared_lock<std::shared_timed_mutex> lock(mutex_);  // read lock
+  auto node_handle_it = subscription_handle_to_node_handles_.find(subscription_handle);
+  if (node_handle_it == subscription_handle_to_node_handles_.end()) {
     return true;
   }
+  auto node_name_it = node_handle_to_node_names_.find(node_handle_it->second);
+  if (node_name_it == node_handle_to_node_names_.end()) {
+    return true;
+  }
+  auto topic_name_it = subscription_handle_to_topic_names_.find(subscription_handle);
+  if (topic_name_it == subscription_handle_to_topic_names_.end()) {
+    return true;
+  }
+D(node_name_it->second)
+D(topic_name_it->second)
 
   if (select_enabled_) {
-    auto is_selected_node = partial_match(selected_node_names_, node_name);
-    auto is_selected_topic = partial_match(selected_topic_names_, topic_name);
+    auto is_selected_node = partial_match(selected_node_names_, node_name_it->second);
+    auto is_selected_topic = partial_match(selected_topic_names_, topic_name_it->second);
 
     if (is_selected_node && selected_node_names_.size() > 0) {
       return true;
@@ -292,8 +296,8 @@ D(topic_name)
     }
     return false;
   } else if (ignore_enabled_) {
-    auto is_ignored_node = partial_match(ignored_node_names_, node_name);
-    auto is_ignored_topic = partial_match(ignored_topic_names_, topic_name);
+    auto is_ignored_node = partial_match(ignored_node_names_, node_name_it->second);
+    auto is_ignored_topic = partial_match(ignored_topic_names_, topic_name_it->second);
 
     if (is_ignored_node && ignored_node_names_.size() > 0) {
       return false;
@@ -426,78 +430,6 @@ D(topic_name)
   }
 }
 
-bool TracingController::is_allowed_publisher_handle_and_add_message(
-  const void * publisher_handle,
-  const void * message)
-{
-  std::unordered_map<const void *, bool>::iterator is_allowed_it;
-  {
-    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
-    is_allowed_it = allowed_publishers_.find(publisher_handle);
-    if (is_allowed_it != allowed_publishers_.end()) {
-      add_allowed_messages(message, is_allowed_it->second);
-      return is_allowed_it->second;
-    }
-  }
-  {
-    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
-    auto node_handle = publisher_handle_to_node_handles_[publisher_handle];
-    auto node_name = node_handle_to_node_names_[node_handle];
-    auto topic_name = publisher_handle_to_topic_names_[publisher_handle];
-
-    if (node_name.size() == 0 || topic_name.size() == 0) {
-      allowed_publishers_[publisher_handle] = true;
-      if (is_iron_or_later()) {
-        // omit "/rosout" output. (after iron version)
-        add_allowed_messages(message, false);
-        return false;
-      }
-      add_allowed_messages(message, true);
-      return true;
-    }
-
-    if (select_enabled_) {
-      auto is_selected_node = partial_match(selected_node_names_, node_name);
-      auto is_selected_topic = partial_match(selected_topic_names_, topic_name);
-
-      if (is_selected_topic && selected_topic_names_.size() > 0) {
-        allowed_publishers_[publisher_handle] = true;
-        add_allowed_messages(message, true);
-        return true;
-      }
-      if (is_selected_node && selected_node_names_.size() > 0) {
-        allowed_publishers_[publisher_handle] = true;
-        add_allowed_messages(message, true);
-        return true;
-      }
-      allowed_publishers_[publisher_handle] = false;
-      add_allowed_messages(message, false);
-      return false;
-    } else if (ignore_enabled_) {
-      auto is_ignored_node = partial_match(ignored_node_names_, node_name);
-      auto is_ignored_topic = partial_match(ignored_topic_names_, topic_name);
-
-      if (is_ignored_node && ignored_node_names_.size() > 0) {
-        allowed_publishers_[publisher_handle] = false;
-        add_allowed_messages(message, false);
-        return false;
-      }
-      if (is_ignored_topic && ignored_topic_names_.size() > 0) {
-        allowed_publishers_[publisher_handle] = false;
-        add_allowed_messages(message, false);
-        return false;
-      }
-      allowed_publishers_[publisher_handle] = true;
-      add_allowed_messages(message, true);
-      allowed_messages_[message] = true;
-      return true;
-    }
-    allowed_publishers_[publisher_handle] = true;
-    add_allowed_messages(message, true);
-    return true;
-  }
-}
-
 bool TracingController::is_allowed_buffer(const void * buffer)
 {
   std::unordered_map<const void *, bool>::iterator is_allowed_it;
@@ -587,7 +519,7 @@ bool TracingController::is_allowed_timer_handle(const void * timer_handle)
   }
 
   {
-    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
     auto node_handle = timer_handle_to_node_handles_[timer_handle];
     auto node_name = node_handle_to_node_names_[node_handle];
 
@@ -632,7 +564,7 @@ bool TracingController::is_allowed_state_machine(const void * state_machine)
   }
 
   {
-    std::shared_lock<std::shared_timed_mutex> lock(mutex_);
+    std::lock_guard<std::shared_timed_mutex> lock(mutex_);
     auto node_handle = state_machine_to_node_handles_[state_machine];
     auto node_name = node_handle_to_node_names_[node_handle];
 
@@ -1037,8 +969,8 @@ void TracingController::add_client_handle(const void * client_handle, const void
 void TracingController::add_allowed_messages(
   const void * message, bool is_allowed)
 {
-  // Be sure to call with "mutex_" locked.
   static const int max_sz = 256;
+  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
   if (allowed_messages_.size() > max_sz) {
     allowed_messages_.clear();
   }
