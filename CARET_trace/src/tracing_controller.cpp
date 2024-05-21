@@ -1007,12 +1007,23 @@ void TracingController::add_client_handle(const void * client_handle, const void
   allowed_client_handles_.erase(client_handle);
 }
 
-void TracingController::add_allowed_messages(const void * message, bool is_allowed)
+void TracingController::add_allowed_messages( const void * message, bool is_allowed)
 {
   // Be sure to call with "mutex_" locked.
-  static const int max_sz = 256;
+  static const int max_sz = 2;
+  static const int inner_loop = 10000;
+  static volatile int reent = 0;
+  if (++reent > 1) {
+    std::cout << "\n!!! reent: " << reent << std::endl;
+  }
   if (allowed_messages_.size() > max_sz) {
-    allowed_messages_.clear();
+    for (int i = 0; i < inner_loop; i++) {
+      void *ptr = reinterpret_cast<void*>(i);
+      allowed_messages_[ptr] = i & 0x01;
+      allowed_messages_.clear(); // ★
+    }
+    //allowed_messages_.clear(); // ★ 
   }
   allowed_messages_[message] = is_allowed;
+  --reent;
 }
