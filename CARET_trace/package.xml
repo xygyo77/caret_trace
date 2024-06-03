@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>caret_trace</name>
-  <version>0.5.2</version>
+  <version>0.5.6</version>
   <description>Library to add tracepoints for CARET</description>
   <maintainer email="yamasaki@isp.co.jp">ymski</maintainer>
   <maintainer email="uetsuki@isp.co.jp">isp-uetsuki</maintainer>
@@ -21,6 +21,7 @@
   <depend>rmw_fastrtps_shared_cpp</depend>
   <depend>rmw_implementation</depend>
   <depend>std_msgs</depend>
+  <depend>uuid</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>caret_lint_common</test_depend>

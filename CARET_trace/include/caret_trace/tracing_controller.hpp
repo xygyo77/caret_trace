@@ -221,16 +221,14 @@ private:
   std::unordered_map<const void *, const void *> ipb_to_subscriptions_;
   std::unordered_map<const void *, bool> allowed_buffers_;
   std::unordered_map<const void *, bool> allowed_ipbs_;
-  
+
   std::unordered_map<const void *, const void *> state_machine_to_node_handles_;
   std::unordered_map<const void *, bool> allowed_state_machines_;
-  
+
   std::unordered_map<const void *, const void *> service_handle_to_node_handles_;
   std::unordered_map<const void *, bool> allowed_service_handles_;
   std::unordered_map<const void *, const void *> client_handle_to_node_handles_;
   std::unordered_map<const void *, bool> allowed_client_handles_;
-  
-  std::unordered_map<const void *, const void *> message_to_publisher_handles_;
   std::unordered_map<const void *, bool> allowed_messages_;
 };
 

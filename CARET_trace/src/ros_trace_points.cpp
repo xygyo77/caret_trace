@@ -1173,11 +1173,7 @@ void ros_trace_rcl_lifecycle_state_machine_init(
 #endif
       D_SEL("SM", state_machine, node_handle, rcl_lifecycle_state_machine_init)
     } else {
-      if (context.is_recording_allowed()) {
-        D_IGN("SM", state_machine, node_handle, rcl_lifecycle_state_machine_init)
-      } else {
-        D_SEL_IGN("SM", state_machine, node_handle, rcl_lifecycle_state_machine_init)
-      }
+      D_IGN("SM", state_machine, node_handle, rcl_lifecycle_state_machine_init)
     }
   };
 
@@ -1208,7 +1204,7 @@ void ros_trace_rcl_lifecycle_transition(
     return;
   }
 
-  if (context.get_controller().is_allowed_state_machine(state_machine) && 
+  if (context.get_controller().is_allowed_state_machine(state_machine) &&
       context.is_recording_allowed()) {
     ((functionT) orig_func)(state_machine, start_label, goal_label);
 

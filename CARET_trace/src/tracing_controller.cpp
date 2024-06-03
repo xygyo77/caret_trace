@@ -555,7 +555,7 @@ bool TracingController::is_allowed_timer_handle(const void * timer_handle)
 bool TracingController::is_allowed_state_machine(const void * state_machine)
 {
   std::unordered_map<const void *, bool>::iterator is_allowed_it;
- {
+  {
     std::shared_lock<std::shared_timed_mutex> lock(mutex_);
     is_allowed_it = allowed_state_machines_.find(state_machine);
     if (is_allowed_it != allowed_state_machines_.end()) {
@@ -884,7 +884,6 @@ void TracingController::add_subscription(
 {
   std::lock_guard<std::shared_timed_mutex> lock(mutex_);
   subscription_to_subscription_handles_[subscription] = subscription_handle;
-  
   allowed_buffers_.clear();
   allowed_ipbs_.clear();
   allowed_callbacks_.clear();
@@ -905,7 +904,6 @@ void TracingController::add_timer_handle(const void * timer_handle, const void *
 
   timer_handle_to_node_handles_[timer_handle] = node_handle;
   allowed_timer_handles_.erase(timer_handle);
-  
   allowed_callbacks_.clear();
 }
 
@@ -941,7 +939,7 @@ void TracingController::add_ipb(const void * ipb, const void * subscription)
   std::lock_guard<std::shared_timed_mutex> lock(mutex_);
   ipb_to_subscriptions_[ipb] = subscription;
   allowed_ipbs_.erase(ipb);
-  
+
   allowed_buffers_.clear();
 }
 
@@ -1079,16 +1077,7 @@ std::string TracingController::get_node_name(const std::string type, const void 
       }
       return "(NOTHING)";
     } else if (type == "MSG") {
-      if (message_to_publisher_handles_.count(key) > 0) {
-        auto publisher_handle = message_to_publisher_handles_[key];
-        if (publisher_handle_to_node_handles_.count(publisher_handle) > 0) {
-          auto nh = publisher_handle_to_node_handles_[publisher_handle];
-          if (node_handle_to_node_names_.count(nh) > 0) {
-            return node_handle_to_node_names_[nh];
-          }
-        }
-      }
-      return "(NOTHING)";
+      return "(MSG)";
     } else if (type == "OTH") {
       return "OTH(dds_write/bind/message)";
     }
