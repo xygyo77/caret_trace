@@ -203,8 +203,7 @@ bool TracingController::is_allowed_callback(const void * callback)
     auto node_name = to_node_name(callback);
     auto topic_name = to_topic_name(callback);
 
-D(node_name)
-D(topic_name)
+D3(node_name,topic_name, callback)
     if (node_name.size() == 0 || topic_name.size() == 0) {
       allowed_callbacks_[callback] = true;
       return true;
@@ -281,8 +280,7 @@ bool TracingController::is_allowed_subscription_handle(const void * subscription
   if (topic_name_it == subscription_handle_to_topic_names_.end()) {
     return true;
   }
-D(node_name_it->second)
-D(topic_name_it->second)
+D3(node_name_it->second, topic_name_it->second, subscription_handle)
 
   if (select_enabled_) {
     auto is_selected_node = partial_match(selected_node_names_, node_name_it->second);
@@ -327,8 +325,7 @@ bool TracingController::is_allowed_rmw_subscription_handle(const void * rmw_subs
     auto node_name = node_handle_to_node_names_[node_handle];
     auto topic_name = rmw_subscription_handle_to_topic_names_[rmw_subscription_handle];
 
-D(node_name)
-D(topic_name)
+D3(node_name, topic_name, rmw_subscription_handle)
     if (node_name.size() == 0 || topic_name.size() == 0) {
       allowed_rmw_subscription_handles_[rmw_subscription_handle] = true;
       return true;
@@ -385,8 +382,7 @@ bool TracingController::is_allowed_publisher_handle(const void * publisher_handl
     auto node_name = node_handle_to_node_names_[node_handle];
     auto topic_name = publisher_handle_to_topic_names_[publisher_handle];
 
-D(node_name)
-D(topic_name)
+D3(node_name, topic_name, publisher_handle)
     if (node_name.size() == 0 || topic_name.size() == 0) {
       allowed_publishers_[publisher_handle] = true;
       if (is_iron_or_later()) {
@@ -459,8 +455,7 @@ bool TracingController::is_allowed_buffer(const void * buffer)
     }
     auto topic_name = subscription_handle_to_topic_names_[subscription_handle];
 
-D(node_name)
-D(topic_name)
+D3(node_name, topic_name, buffer)
     if (node_name.size() == 0 || topic_name.size() == 0) {
       allowed_buffers_[buffer] = true;
       return true;
@@ -623,8 +618,7 @@ bool TracingController::is_allowed_ipb(const void * ipb)
     }
     auto topic_name = subscription_handle_to_topic_names_[subscription_handle];
 
-D(node_name)
-D(topic_name)
+D3(node_name, topic_name, ipb)
     if (node_name.size() == 0 || topic_name.size() == 0) {
       allowed_ipbs_[ipb] = true;
       return true;

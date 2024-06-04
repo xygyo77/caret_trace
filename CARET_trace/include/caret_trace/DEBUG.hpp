@@ -71,6 +71,24 @@ static void extractc_fn(const char* symbol, char* fn, size_t bufSize) {
           std::cout << buf.str(); \
         }
 
+#define D2(X1, X2) { \
+          std::shared_lock<std::shared_mutex> lock(smtx); \
+          std::ostringstream buf; \
+          buf << std::setbase(10) << getpid() << "/ " << gettid() << ": "; \
+          buf << __func__ << ": " << __LINE__ << " | " << \
+          std::setbase(16) << std::uppercase << #X1 << "=" << X1 << " : " << #X2 << "=" << X2 << std::endl; \
+          std::cout << buf.str(); \
+        }
+
+#define D3(X1, X2, X3) { \
+          std::shared_lock<std::shared_mutex> lock(smtx); \
+          std::ostringstream buf; \
+          buf << std::setbase(10) << getpid() << "/ " << gettid() << ": "; \
+          buf << __func__ << ": " << __LINE__ << " | " << \
+          std::setbase(16) << std::uppercase << #X1 << "=" << X1 << " : " << #X2 << "=" << X2 << " : " << #X3 << "=" << X3 << std::endl; \
+          std::cout << buf.str(); \
+        }
+
 #define D_IGN(TYPE, KEY, X, TRC) { \
           std::shared_lock<std::shared_mutex> lock(smtx); \
           std::ostringstream buf; \
