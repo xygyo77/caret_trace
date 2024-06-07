@@ -71,14 +71,16 @@ jobs:
       - name: Find all C++ source files
         id: find-files
         run: |
-          target_files=$(find . -name "*.cpp" -or -name "*.hpp" -or -name "*.h")
-          echo "target_files=$target_files" >> $GITHUB_ENV
+          target_files=$(find . -name "*.cpp" -or -name "*.hpp" -or -name "*.h" | tr '\n' ' ')
+          echo "TARGET_FILES=$target_files" >> $GITHUB_ENV
 
       - name: Run clang-tidy
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
           rosdistro: humble
-          target-files: ${{ env.target_files }}
+          target-files: ${{ env.TARGET_FILES }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy
           build-depends-repos: build_depends.repos
+
+
 
