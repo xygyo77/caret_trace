@@ -2,9 +2,7 @@ name: build-and-test-differential
 
 on:
   pull_request:
-    branches:
-      - fix_clang_tidy
-  workflow_dispatch:
+
 jobs:
   build-and-test-differential:
     runs-on: ubuntu-latest
@@ -67,21 +65,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Commenting out the steps that get modified packages and files
-      #- name: Remove exec_depend
-      #  uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
+      - name: Remove exec_depend
+        uses: autowarefoundation/autoware-github-actions/remove-exec-depend@v1
 
-      #- name: Get modified packages
-      #  id: get-modified-packages
-      #  uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
+      - name: Get modified packages
+        id: get-modified-packages
+        uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
 
-      #- name: Get modified files
-      #  id: get-modified-files
-      #  uses: tj-actions/changed-files@v44
-      #  with:
-      #    files: |
-      #      **/*.cpp
-      #      **/*.hpp
+      - name: Get modified files
+        id: get-modified-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            **/*.cpp
+            **/*.hpp
 
       - name: Run clang-tidy
         if: ${{ steps.get-modified-files.outputs.all_changed_files != '' }}
