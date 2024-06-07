@@ -84,7 +84,7 @@ jobs:
       #      **/*.hpp
 
       - name: Run clang-tidy
-        if: ${{ steps.get-modified-files.outputs.all_changed_files != '' }}
+      #  if: ${{ steps.get-modified-files.outputs.all_changed_files != '' }}
         uses: autowarefoundation/autoware-github-actions/clang-tidy@v1
         with:
           rosdistro: humble
