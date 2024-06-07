@@ -68,13 +68,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download clang-tidy configuration
-        run: curl -fsSL -o .clang-tidy https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy
-
       - name: Find all C++ source files
         id: find-files
         run: |
-          target_files=$(find . -name "*.cpp" -or -name "*.hpp")
+          target_files=$(find . -name "*.cpp" -or -name "*.hpp" -or -name "*.h")
           echo "target_files=$target_files" >> $GITHUB_ENV
 
       - name: Run clang-tidy
@@ -84,3 +81,4 @@ jobs:
           target-files: ${{ env.target_files }}
           clang-tidy-config-url: https://raw.githubusercontent.com/autowarefoundation/autoware/main/.clang-tidy
           build-depends-repos: build_depends.repos
+
