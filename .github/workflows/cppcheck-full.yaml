@@ -29,6 +29,12 @@ jobs:
           make -j $(nproc)
           sudo make install
 
+      - name: Show directory structure
+        run: |
+          echo "Showing directory structure from current directory:"
+          pwd
+          ls -R
+
       - name: Get C++ files in CARET_trace
         id: cpp-files
         run: |
@@ -77,4 +83,3 @@ jobs:
         run: |
           echo "Cppcheck found errors, failing the job."
           exit 1
-
