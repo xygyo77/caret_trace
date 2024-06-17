@@ -37,11 +37,12 @@ jobs:
 
       - name: Run Cppcheck on all files
         id: cppcheck
+        continue-on-error: true
         run: |
           files=$(cat all_files.txt)
           if [ -n "$files" ]; then
             echo "Running Cppcheck on all files: $files"
-            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $files 2> cppcheck-report.txt || true
+            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $files 2> cppcheck-report.txt
           else
             echo "No C++ files found."
             touch cppcheck-report.txt
@@ -58,17 +59,15 @@ jobs:
           name: cppcheck-report
           path: cppcheck-report.txt
 
-      - name: Check for Cppcheck errors
-        id: check-cppcheck-errors
+      - name: Determine if Cppcheck found errors
+        id: determine-cppcheck-errors
         run: |
           if grep -q 'error' cppcheck-report.txt; then
-            echo "Cppcheck found errors."
-            echo "error=true" >> $GITHUB_ENV
+            echo "cppcheck-errors=true" >> $GITHUB_ENV
           else
-            echo "No errors found by Cppcheck."
-            echo "error=false" >> $GITHUB_ENV
+            echo "cppcheck-errors=false" >> $GITHUB_ENV
           fi
 
       - name: Fail the job if Cppcheck found errors
-        if: env.error == 'true'
+        if: env.cppcheck-errors == 'true'
         run: exit 1
