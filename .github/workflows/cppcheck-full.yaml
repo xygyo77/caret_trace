@@ -29,22 +29,23 @@ jobs:
           make -j $(nproc)
           sudo make install
 
-      - name: Get C++ files in src/CARET
+      - name: Get C++ files in CARET_trace
         id: cpp-files
         run: |
-          find src/CARET -type f \( -name "*.cpp" -o -name "*.hpp" \) > cpp_files.txt
-          echo "Detected C++ files in src/CARET:"
+          echo "Searching for C++ files in CARET_trace directory..."
+          find CARET_trace -type f \( -name "*.cpp" -o -name "*.hpp" \) > cpp_files.txt
+          echo "Detected C++ files in CARET_trace:"
           cat cpp_files.txt
 
-      - name: Run Cppcheck on src/CARET files
+      - name: Run Cppcheck on CARET_trace files
         id: cppcheck
         continue-on-error: true
         run: |
           if [ -s cpp_files.txt ]; then
-            echo "Running Cppcheck on files in src/CARET"
+            echo "Running Cppcheck on files in CARET_trace"
             cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $(cat cpp_files.txt) 2> cppcheck-report.txt || true
           else
-            echo "No C++ files found in src/CARET."
+            echo "No C++ files found in CARET_trace."
             touch cppcheck-report.txt
           fi
         shell: bash
@@ -76,3 +77,4 @@ jobs:
         run: |
           echo "Cppcheck found errors, failing the job."
           exit 1
+
