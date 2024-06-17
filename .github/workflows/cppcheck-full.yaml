@@ -40,10 +40,9 @@ jobs:
         id: cppcheck
         continue-on-error: true
         run: |
-          files=$(cat all_files.txt)
-          if [ -n "$files" ]; then
-            echo "Running Cppcheck on all files: $files"
-            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $files 2> cppcheck-report.txt || true
+          if [ -s all_files.txt ]; then
+            echo "Running Cppcheck on all files"
+            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $(cat all_files.txt) 2> cppcheck-report.txt || true
           else
             echo "No C++ files found."
             touch cppcheck-report.txt
@@ -77,4 +76,3 @@ jobs:
         run: |
           echo "Cppcheck found errors, failing the job."
           exit 1
-
