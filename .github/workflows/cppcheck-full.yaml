@@ -51,6 +51,7 @@ jobs:
 
       - name: Show cppcheck-report result
         run: |
+          echo "Cppcheck report content:"
           cat cppcheck-report.txt
 
       - name: Upload Cppcheck report
@@ -59,15 +60,19 @@ jobs:
           name: cppcheck-report
           path: cppcheck-report.txt
 
-      - name: Determine if Cppcheck found errors
-        id: determine-cppcheck-errors
+      - name: Check for Cppcheck errors
+        id: check-cppcheck-errors
         run: |
           if grep -q 'error' cppcheck-report.txt; then
+            echo "Cppcheck found errors."
             echo "cppcheck-errors=true" >> $GITHUB_ENV
           else
+            echo "No errors found by Cppcheck."
             echo "cppcheck-errors=false" >> $GITHUB_ENV
           fi
 
       - name: Fail the job if Cppcheck found errors
         if: env.cppcheck-errors == 'true'
-        run: exit 1
+        run: |
+          echo "Cppcheck found errors, failing the job."
+          exit 1
