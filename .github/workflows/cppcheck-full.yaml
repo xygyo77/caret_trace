@@ -29,36 +29,28 @@ jobs:
           make -j $(nproc)
           sudo make install
 
-      - name: Show directory structure
+      - name: Get all C++ files
+        id: all-files
         run: |
-          echo "Showing directory structure from current directory:"
-          pwd
-          ls -R
+          find . -type f \( -name "*.cpp" -o -name "*.hpp" \) > all_files.txt
+          cat all_files.txt
 
-      - name: Get C++ files in CARET_trace
-        id: cpp-files
-        run: |
-          echo "Searching for C++ files in CARET_trace directory..."
-          find CARET_trace -type f \( -name "*.cpp" -o -name "*.hpp" \) > cpp_files.txt
-          echo "Detected C++ files in CARET_trace:"
-          cat cpp_files.txt
-
-      - name: Run Cppcheck on CARET_trace files
-        id: cppcheck
+      - name: Run Cppcheck on all files
         continue-on-error: true
+        id: cppcheck
         run: |
-          if [ -s cpp_files.txt ]; then
-            echo "Running Cppcheck on files in CARET_trace"
-            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $(cat cpp_files.txt) 2> cppcheck-report.txt || true
+          files=$(cat all_files.txt)
+          if [ -n "$files" ]; then
+            echo "Running Cppcheck on all files: $files"
+            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $files 2> cppcheck-report.txt
           else
-            echo "No C++ files found in CARET_trace."
+            echo "No C++ files found."
             touch cppcheck-report.txt
           fi
         shell: bash
 
       - name: Show cppcheck-report result
         run: |
-          echo "Cppcheck report content:"
           cat cppcheck-report.txt
 
       - name: Upload Cppcheck report
@@ -67,19 +59,6 @@ jobs:
           name: cppcheck-report
           path: cppcheck-report.txt
 
-      - name: Check for Cppcheck errors
-        id: check-cppcheck-errors
-        run: |
-          if grep -q 'error' cppcheck-report.txt; then
-            echo "Cppcheck found errors."
-            echo "cppcheck-errors=true" >> $GITHUB_ENV
-          else
-            echo "No errors found by Cppcheck."
-            echo "cppcheck-errors=false" >> $GITHUB_ENV
-          fi
-
-      - name: Fail the job if Cppcheck found errors
-        if: env.cppcheck-errors == 'true'
-        run: |
-          echo "Cppcheck found errors, failing the job."
-          exit 1
+      - name: Fail the job if Cppcheck failed
+        if: ${{ steps.cppcheck.outcome == 'failure' }}
+        run: exit 1
