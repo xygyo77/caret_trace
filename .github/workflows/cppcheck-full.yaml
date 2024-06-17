@@ -42,4 +42,32 @@ jobs:
           files=$(cat all_files.txt)
           if [ -n "$files" ]; then
             echo "Running Cppcheck on all files: $files"
-            cppcheck --enable=all --inconclusive --check-level=exha
+            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $files 2> cppcheck-report.txt || true
+          else
+            echo "No C++ files found."
+            touch cppcheck-report.txt
+          fi
+        shell: bash
+
+      - name: Show cppcheck-report result
+        run: |
+          cat cppcheck-report.txt
+
+      - name: Upload Cppcheck report
+        uses: actions/upload-artifact@v2
+        with:
+          name: cppcheck-report
+          path: cppcheck-report.txt
+
+      - name: Determine if Cppcheck found errors
+        id: determine-cppcheck-errors
+        run: |
+          if grep -q 'error' cppcheck-report.txt; then
+            echo "cppcheck-errors=true" >> $GITHUB_ENV
+          else
+            echo "cppcheck-errors=false" >> $GITHUB_ENV
+          fi
+
+      - name: Fail the job if Cppcheck found errors
+        if: env.cppcheck-errors == 'true'
+        run: exit 1
