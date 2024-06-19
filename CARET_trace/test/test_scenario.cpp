@@ -36,11 +36,12 @@ using ::testing::Return;
 
 using rclcpp::Logger;
 
+// cppcheck-suppress nullPointerArithmetic
 void add_data(DataContainer & container, int loop)
 {
   char * ptr = nullptr;
   for (auto i = 0; i < loop; i++) {
-    ptr++;  // cppcheck-suppress nullPointerArithmetic
+    ptr++;
     container.store_rcl_init(ptr, 0);
   }
 }
@@ -50,6 +51,7 @@ void record_data(DataContainer & container, int loop)
   container.record(loop);
 }
 
+// cppcheck-suppress nullPointerArithmetic
 TEST(ScenarioTest, TestSingleThread)
 {
   auto keys = std::make_shared<DataContainer::RclInit::KeysT>("rcl_init");
@@ -68,7 +70,7 @@ TEST(ScenarioTest, TestSingleThread)
 
   char * ptr = nullptr;
   for (auto i = 0; i < loop; i++) {
-    ptr++;  // cppcheck-suppress nullPointerArithmetic
+    ptr++;
     EXPECT_CALL(rcl_init_mock, Call(ptr, 0)).Times(1);
   }
 
@@ -76,6 +78,7 @@ TEST(ScenarioTest, TestSingleThread)
   container.record(loop);
 }
 
+// cppcheck-suppress nullPointerArithmetic
 TEST(ScenarioTest, TestMultiThread)
 {
   auto keys = std::make_shared<DataContainer::RclInit::KeysT>("rcl_init");
@@ -94,7 +97,7 @@ TEST(ScenarioTest, TestMultiThread)
 
   char * ptr = nullptr;
   for (auto i = 0; i < loop; i++) {
-    ptr++;  // cppcheck-suppress nullPointerArithmetic
+    ptr++;
     EXPECT_CALL(rcl_init_mock, Call(ptr, 0)).WillRepeatedly(Return());
   }
 
