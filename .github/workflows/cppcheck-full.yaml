@@ -47,7 +47,7 @@ jobs:
           files=$(cat all_files.txt)
           if [ -n "$files" ]; then
             echo "Running Cppcheck on all files: $files"
-            cppcheck --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $files 2> cppcheck-report.txt
+            cppcheck --inline-suppr --enable=all --inconclusive --check-level=exhaustive --error-exitcode=1 --suppressions-list=.cppcheck_suppressions $files 2> cppcheck-report.txt
           else
             echo "No C++ files found."
             touch cppcheck-report.txt
