@@ -112,7 +112,7 @@ public:
     ContainerTraits<const void *, const void *, const void *, const char *, int64_t>;
 
   /// @brief ContainerTraits for rclcpp_service_callback_added trace points.
-  using RclcppServiceCallbackAdded = ContainerTraits<const void *, const char *, int64_t>;
+  using RclcppServiceCallbackAdded = ContainerTraits<const void *, const void *, int64_t>;
 
   /// @brief ContainerTraits for rcl_service_init trace points.
   using RclServiceInit =
@@ -186,11 +186,11 @@ public:
     std::shared_ptr<RclcppIpbToSubscription::KeysT> rclcpp_ipb_to_subscription,
     std::shared_ptr<RmwImplementation::KeysT> rmw_implementation);
 
-  bool record(uint64_t loop_count = 1);
+  bool record(uint64_t loop_count = 1) override;
 
-  void start_recording();
+  void start_recording() override;
 
-  void reset();
+  void reset() override;
 
   /// @brief Store data for add_callback_group trace points.
   /// @tparam ...Args Data types to be stored.
