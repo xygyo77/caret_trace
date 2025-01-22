@@ -522,6 +522,33 @@ TRACEPOINT_EVENT(
   )
 )
 
+TRACEPOINT_EVENT(
+  TRACEPOINT_PROVIDER,
+  add_cpu_info,
+  TP_ARGS(
+    const char *, tp_name_arg,
+    const void *, obj_id_arg,
+    const int, option_arg,
+    uint64_t, real_sec_arg,
+    int64_t, real_nsec_arg,
+    uint64_t, cpu_sec_arg,
+    int64_t, cpu_nsec_arg,
+    uint64_t, vctsw_arg,
+    uint64_t, nvctsw_arg
+  ),
+  TP_FIELDS(
+    ctf_string(tp_name, tp_name_arg)
+    ctf_integer_hex(const void *, obj_id, obj_id_arg)
+    ctf_integer(int64_t, option, option_arg)
+    ctf_integer(uint64_t, real_sec, real_sec_arg)
+    ctf_integer(int64_t, real_nsec, real_nsec_arg)
+    ctf_integer(uint64_t, cpu_sec, cpu_sec_arg)
+    ctf_integer(int64_t, cpu_nsec, cpu_nsec_arg)
+    ctf_integer(uint64_t, vctsw, vctsw_arg)
+    ctf_integer(uint64_t, nvctsw, nvctsw_arg)
+  )
+)
+
 // clang-format on
 
 #endif /* _TP_H */

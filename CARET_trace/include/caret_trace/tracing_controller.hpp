@@ -143,6 +143,10 @@ public:
   /// @return True if the process is enabled, false otherwise.
   bool is_allowed_process();
 
+  /// @brief Check if add cpu information to output trace events
+  /// @return True if the add cpu information is enabled, false otherwise.
+  bool is_add_cpu_info();
+
   /// @brief Check if trace point is a enabled timer handle
   /// @param timer_handle  Address of the timer handle.
   /// @return True if the timer_handle is enabled, false otherwise.
@@ -191,6 +195,7 @@ private:
   const bool ignore_enabled_;
 
   bool is_ignored_process_;
+  bool is_add_cpu_info_;
 
   const bool use_log_;  // for test
 

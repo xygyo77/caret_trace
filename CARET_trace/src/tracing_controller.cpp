@@ -34,6 +34,7 @@
 #define SELECT_TOPICS_ENV_NAME "CARET_SELECT_TOPICS"
 #define IGNORE_TOPICS_ENV_NAME "CARET_IGNORE_TOPICS"
 #define IGNORE_PROCESSES_ENV_NAME "CARET_IGNORE_PROCESSES"
+#define CARET_ADD_CPU_INFO "CARET_ADD_CPU_INFO"
 
 bool partial_match(std::unordered_set<std::string> set, std::string target_name)
 {
@@ -164,6 +165,14 @@ TracingController::TracingController(bool use_log)
   is_ignored_process_ =
     ignored_process_names_.size() > 0 &&
     partial_match(ignored_process_names_, std::string(program_invocation_short_name));
+
+  std::string env_var = get_env_var(CARET_ADD_CPU_INFO);
+  std::transform(env_var.begin(), env_var.end(), env_var.begin(), ::tolower);
+  if (env_var == "true" || env_var == "1" || env_var == "yes") {
+    is_add_cpu_info_ = true;
+  } else {
+    is_add_cpu_info_ = false;
+  }
 
   check_condition_set(selected_node_names_, use_log);
   check_condition_set(ignored_node_names_, use_log);
@@ -488,6 +497,11 @@ bool TracingController::is_allowed_buffer(const void * buffer)
 bool TracingController::is_allowed_process()
 {
   return !is_ignored_process_;
+}
+
+bool TracingController::is_add_cpu_info()
+{
+  return is_add_cpu_info_;
 }
 
 bool TracingController::is_allowed_timer_handle(const void * timer_handle)
