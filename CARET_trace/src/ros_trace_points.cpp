@@ -513,27 +513,13 @@ void ros_trace_rclcpp_timer_link_node(const void * timer_handle, const void * no
   record(timer_handle, node_handle, now);
 }
 
-#define TP_TEST 0
-#if TP_TEST
-thread_local double real, cpu_tm;
-#else
 thread_local struct timespec real_ts, cpu_ts;
-#endif
 thread_local uint64_t voluntary_switches = 0;
 thread_local uint64_t nonvoluntary_switches = 0;
 void get_time()
 {
-#if TP_TEST
-  struct timespec ts;
-  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-  struct timespec ts2;
-  clock_gettime(CLOCK_THREAD_CPUTIME_ID , &ts2);
-  real = ts.tv_sec + (double)ts.tv_nsec / 1e9;
-  cpu_tm = ts2.tv_sec + (double)ts2.tv_nsec / 1e9;
-#else
   clock_gettime(CLOCK_MONOTONIC, &real_ts);
   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_ts);
-#endif
 }
 
 void read_context_switches() {
@@ -565,48 +551,16 @@ void read_context_switches() {
 
 void ros_trace_add_cpu_info(const char *tp_name, const void *obj_id, const int option)
 {
-#if TP_TEST
-  if (strstr(tp_name, "start")) {
-    get_time();
-    double rt = real;
-    double ct = cpu_tm;
-    read_context_switches();
-    unsigned long long vsw = voluntary_switches;
-    unsigned long long nvsw = nonvoluntary_switches;
-    std::cout << tp_name << " " << gettid() << " real: " << rt << " CPU: " << ct << " vsw: " << vsw << " nvsw: " << nvsw << std::endl;
-  } else if (strstr(tp_name, "end")) {
-    unsigned long long vsw = voluntary_switches;
-    unsigned long long nvsw = nonvoluntary_switches;
-    //std::cout << "End - Before read_context_switches(): "
-    //      << "vsw=" << vsw << ", nvsw=" << nvsw << std::endl;
-    read_context_switches();
-    vsw = voluntary_switches - vsw;
-    nvsw = nonvoluntary_switches - nvsw;
-    
-    double rt = real;
-    double ct = cpu_tm;
-    get_time();
-    rt = real- rt;
-    ct = cpu_tm - ct;
-    std::cout << tp_name << " " << gettid() << " real: " << rt << " CPU: " << ct << " vsw: " << vsw << " nvsw: " << nvsw << std::endl;
-  } else {
-    get_time();
-    double rt = real;
-    double ct = cpu_tm;
-    read_context_switches();
-    unsigned long long vsw = voluntary_switches;
-    unsigned long long nvsw = nonvoluntary_switches;
-    std::cout << tp_name << " " << gettid() << " real: " << rt << " CPU: " << ct << " vsw: " << vsw << " nvsw: " << nvsw << std::endl;
-  }
-#else
   static auto & context = Singleton<Context>::get_instance();
   static auto & controller = context.get_controller();
   
   if (!controller.is_add_cpu_info()) {
     return;
   }
+  // get performance data for threads
   read_context_switches();
   get_time();
+
   tracepoint(
     TRACEPOINT_PROVIDER,
     add_cpu_info,
@@ -623,7 +577,6 @@ void ros_trace_add_cpu_info(const char *tp_name, const void *obj_id, const int o
         tp_name << "," <<
         obj_id << std::endl;
   #endif
-#endif
 }
 
 void ros_trace_callback_start(const void * callback, bool is_intra_process)
