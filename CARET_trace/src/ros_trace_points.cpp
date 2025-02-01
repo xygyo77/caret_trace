@@ -54,6 +54,19 @@
 std::unique_ptr<std::thread> trace_node_thread;
 thread_local bool trace_filter_is_rcl_publish_recorded;
 
+// performance data for thread
+struct alignas(64) ThreadPerfData {
+  bool in_process;
+  const void * callback;
+  bool is_intra_process;
+  struct timespec real_ts, cpu_ts;
+  uint64_t vctsw, nvctsw;
+  uint64_t count;
+}; 
+thread_local struct ThreadPerfData get_next_thread_perf_data;
+thread_local struct ThreadPerfData cb_start_thread_perf_data;
+thread_local struct ThreadPerfData cb_end_thread_perf_data;
+
 using std::string;
 using std::vector;
 static bool ignore_rcl_timer_init = false;
@@ -192,7 +205,6 @@ void check_and_run_trace_node()
 
 namespace ORIG_FUNC
 {
-static void * DEFINE_ORIG_FUNC(ros_trace_callback_end);
 static void * DEFINE_ORIG_FUNC(ros_trace_callback_start);
 static void * DEFINE_ORIG_FUNC(ros_trace_dispatch_intra_process_subscription_callback);
 static void * DEFINE_ORIG_FUNC(ros_trace_message_construct);
@@ -513,16 +525,15 @@ void ros_trace_rclcpp_timer_link_node(const void * timer_handle, const void * no
   record(timer_handle, node_handle, now);
 }
 
-thread_local struct timespec real_ts, cpu_ts;
-thread_local uint64_t voluntary_switches = 0;
-thread_local uint64_t nonvoluntary_switches = 0;
-void get_time()
+
+// set thread performance data
+void get_time(ThreadPerfData &thread_data)
 {
-  clock_gettime(CLOCK_MONOTONIC, &real_ts);
-  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_ts);
+  clock_gettime(CLOCK_MONOTONIC, &thread_data.real_ts);
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &thread_data.cpu_ts);
 }
 
-void read_context_switches() {
+void read_context_switches(ThreadPerfData &thread_data) {
     pid_t tid = gettid();
     std::string filename = "/proc/" + std::to_string(tid) + "/status";
     std::ifstream file(filename);
@@ -537,9 +548,9 @@ void read_context_switches() {
             // Key-Value
             if (iss >> key >> value) {
                 if (key == "voluntary_ctxt_switches:") {
-                    voluntary_switches = value;
+                    thread_data.vctsw = value;
                 } else if (key == "nonvoluntary_ctxt_switches:") {
-                    nonvoluntary_switches = value;
+                    thread_data.nvctsw = value;
                 }
             }
         }
@@ -549,34 +560,88 @@ void read_context_switches() {
     }
 }
 
-void ros_trace_add_cpu_info(const char *tp_name, const void *obj_id, const int option)
+// set thread performance data to tracepoint
+static void ros_trace_thread_perf_data(const char *tp_name, const void *callback, const bool is_intra_process)
 {
   static auto & context = Singleton<Context>::get_instance();
   static auto & controller = context.get_controller();
   
-  if (!controller.is_add_cpu_info()) {
+  if (!controller.is_add_thread_perf_data()) {
     return;
+  } else {
+    // get performance data for threads
+    if (strstr(tp_name, "get_next")) {
+      if (!get_next_thread_perf_data.in_process) {
+        read_context_switches(get_next_thread_perf_data);
+        get_time(get_next_thread_perf_data);
+        get_next_thread_perf_data.in_process = true;
+        get_next_thread_perf_data.count = 0;
+      } else {
+        get_next_thread_perf_data.count++;
+      }
+    } else if (strstr(tp_name, "start")) {
+      if (!cb_start_thread_perf_data.in_process) {
+        read_context_switches(cb_start_thread_perf_data);
+        get_time(cb_start_thread_perf_data);
+        cb_start_thread_perf_data.callback = callback;
+        cb_start_thread_perf_data.is_intra_process = is_intra_process;
+        cb_start_thread_perf_data.in_process = true;
+        cb_start_thread_perf_data.count = 1;
+      } else {
+        cb_start_thread_perf_data.count++;
+      }
+    } else {
+      // aggregation of callback_end
+      read_context_switches(cb_end_thread_perf_data);
+      get_time(cb_end_thread_perf_data);
+      cb_end_thread_perf_data.callback = callback;
+      
+      tracepoint(
+        TRACEPOINT_PROVIDER,
+        callback_end_ex,
+        callback,
+        true,   // extension (thread perf data)
+        // "get_next_ready"
+        get_next_thread_perf_data.real_ts.tv_sec,
+        get_next_thread_perf_data.real_ts.tv_nsec,
+        get_next_thread_perf_data.cpu_ts.tv_sec,
+        get_next_thread_perf_data.cpu_ts.tv_nsec,
+        get_next_thread_perf_data.vctsw,
+        get_next_thread_perf_data.nvctsw,
+        get_next_thread_perf_data.count,
+        // "callback_start"
+        cb_start_thread_perf_data.callback,
+        cb_start_thread_perf_data.is_intra_process,
+        cb_start_thread_perf_data.real_ts.tv_sec,
+        cb_start_thread_perf_data.real_ts.tv_nsec,
+        cb_start_thread_perf_data.cpu_ts.tv_sec,
+        cb_start_thread_perf_data.cpu_ts.tv_nsec,
+        cb_start_thread_perf_data.vctsw,
+        cb_start_thread_perf_data.nvctsw,
+        cb_start_thread_perf_data.count,
+        // "callback_end"
+        cb_end_thread_perf_data.callback,
+        cb_end_thread_perf_data.real_ts.tv_sec,
+        cb_end_thread_perf_data.real_ts.tv_nsec,
+        cb_end_thread_perf_data.cpu_ts.tv_sec,
+        cb_end_thread_perf_data.cpu_ts.tv_nsec,
+        cb_end_thread_perf_data.vctsw,
+        cb_end_thread_perf_data.nvctsw
+      );
+    #ifdef DEBUG_OUTPUT
+      std::cerr << "extended callback_end," <<
+      tp_name << "," <<
+      obj_id << std::endl;
+    #endif
+      get_next_thread_perf_data.in_process = false;
+      cb_start_thread_perf_data.in_process = false;
+      /***
+      get_next_thread_perf_data = {0}:
+      cb_start_thread_perf_data = {0}:
+      cb_end_thread_perf_data = {0}:
+      ***/
+    }
   }
-  // get performance data for threads
-  read_context_switches();
-  get_time();
-
-  tracepoint(
-    TRACEPOINT_PROVIDER,
-    add_cpu_info,
-    tp_name, obj_id,
-    option,
-    real_ts.tv_sec,
-    real_ts.tv_nsec,
-    cpu_ts.tv_sec,
-    cpu_ts.tv_nsec,
-    voluntary_switches,
-    nonvoluntary_switches);
-  #ifdef DEBUG_OUTPUT
-      std::cerr << "add_cpu_info," <<
-        tp_name << "," <<
-        obj_id << std::endl;
-  #endif
 }
 
 void ros_trace_callback_start(const void * callback, bool is_intra_process)
@@ -600,17 +665,14 @@ void ros_trace_callback_start(const void * callback, bool is_intra_process)
       callback << "," <<
       is_intra_process << std::endl;
 #endif
-    ros_trace_add_cpu_info(__func__, callback, is_intra_process);
+    ros_trace_thread_perf_data(__func__, callback, is_intra_process);
   }
 }
 
-void ros_trace_callback_end(const void * callback)
+void ros_trace_callback_end_ex(const void * callback)
 {
   static auto & context = Singleton<Context>::get_instance();
   static auto & controller = context.get_controller();
-  static void * orig_func = dlsym(RTLD_NEXT, __func__);
-
-  using functionT = void (*)(const void *);
 
   if (!controller.is_allowed_process()) {
     return;
@@ -619,13 +681,27 @@ void ros_trace_callback_end(const void * callback)
   if (controller.is_allowed_callback(callback) &&
     context.is_recording_allowed())
   {
-    ((functionT) orig_func)(callback);
-
-#ifdef DEBUG_OUTPUT
-    std::cerr << "callback_end," <<
-      callback << std::endl;
-#endif
-    ros_trace_add_cpu_info(__func__, callback, 0);
+    if (!controller.is_add_thread_perf_data()) {
+      tracepoint(
+        TRACEPOINT_PROVIDER,
+        callback_end_ex,
+        callback,
+        false,
+        0, 0, 0, 0, 0, 0, 0,
+        nullptr,
+        0,
+        0, 0, 0, 0, 0, 0, 0,
+        nullptr,
+        0, 0, 0, 0, 0, 0
+      );
+    #ifdef DEBUG_OUTPUT
+      std::cerr << "callback_end," <<
+      tp_name << "," <<
+      obj_id << std::endl;
+    #endif
+    } else {
+      ros_trace_thread_perf_data(__func__, callback, 0);
+    }
   }
 }
 
@@ -1237,7 +1313,7 @@ void ros_trace_rclcpp_executor_get_next_ready()
 // #ifdef DEBUG_OUTPUT
 //   std::cerr << "rclcpp_executor_get_next_ready," << std::endl;
 // #endif
-  ros_trace_add_cpu_info(__func__, nullptr, 0);
+  ros_trace_thread_perf_data(__func__, nullptr, 0);
 }
 
 void ros_trace_rcl_take(

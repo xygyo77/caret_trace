@@ -31,6 +31,70 @@
 #include <lttng/tracepoint.h>
 #include <lttng/tracepoint-event.h>
 
+/*
+ * LTTNG_UST__TP_EXVAR* extract the var names.
+ * LTTNG_UST__TP_EXVAR1 and LTTNG_UST__TP_EXDATA_VAR1 are needed for -std=c99.
+ */
+/***
+#define LTTNG_UST__TP_EXVAR26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	b,d,f,h,j,l,n,p,r,t,v,x,z
+#define LTTNG_UST__TP_EXDATA_VAR26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	__tp_data,b,d,f,h,j,l,n,p,r,t,v,x,z
+#define LTTNG_UST__TP_EXPROTO26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x,y z
+#define LTTNG_UST__TP_EXDATA_PROTO26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x,y
+***/
+#define LTTNG_UST__TP_EXVAR50(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                              A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z)	\
+                              b,d,f,h,j,l,n,p,r,t,v,x, \
+                              B,D,F,H,J,L,N,P,R,T,V,X,Z
+#define LTTNG_UST__TP_EXDATA_VAR50(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                   A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) \
+                                   __tp_data,b,d,f,h,j,l,n,p,r,t,v,x, \
+                                             B,D,F,H,J,L,N,P,R,T,V,X,Z
+
+#define LTTNG_UST__TP_EXPROTO50(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) \
+                                a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x, \
+                                A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T,U V,W X,Y Z
+#define LTTNG_UST__TP_EXDATA_PROTO50(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                     A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) \
+                                     void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x, \
+                                                     A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T,U V,W X,Y Z
+
+#define LTTNG_UST__TP_EXVAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	b,d,f,h,j,l,n,p,r,t,v
+#define LTTNG_UST__TP_EXDATA_VAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	__tp_data,b,d,f,h,j,l,n,p,r,t,v
+#define LTTNG_UST__TP_EXPROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
+#define LTTNG_UST__TP_EXDATA_PROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
+/***
+#define LTTNG_UST__TP_EXVAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	b,d,f,h,j,l,n,p,r,t,v,x
+#define LTTNG_UST__TP_EXDATA_VAR24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	__tp_data,b,d,f,h,j,l,n,p,r,t,v,x
+#define LTTNG_UST__TP_EXPROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x
+#define LTTNG_UST__TP_EXDATA_PROTO24(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x
+***/
+#undef LTTNG_UST__TP_NARGS
+#undef LTTNG_UST___TP_NARGS
+#undef LTTNG_UST__TP_PROTO_N
+#undef LTTNG_UST__TP_VAR_N
+#undef LTTNG_UST__TP_DATA_PROTO_N
+#undef LTTNG_UST__TP_DATA_VAR_N
+#undef LTTNG_UST__TP_ARGS_PROTO
+#undef LTTNG_UST__TP_ARGS_VAR
+#undef LTTNG_UST__TP_ARGS_DATA_PROTO
+#undef LTTNG_UST__TP_ARGS_DATA_VAR
+#undef LTTNG_UST__TP_PARAMS
+
+#define LTTNG_UST__TP_NARGS(...)		LTTNG_UST___TP_NARGS(__VA_ARGS__, 52,51,50,49,48,47,46,45,44,43,42,41,40,39,38,37,36,35,34,33,32,31,30,29,28,27, \
+                                                                      26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
+#define LTTNG_UST___TP_NARGS(_0,_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26, \
+                              _27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52, N, ...)	N
+#define LTTNG_UST__TP_PROTO_N(N, ...)		LTTNG_UST__TP_PARAMS(LTTNG_UST__TP_COMBINE_TOKENS(LTTNG_UST__TP_EXPROTO, N)(__VA_ARGS__))
+#define LTTNG_UST__TP_VAR_N(N, ...)		LTTNG_UST__TP_PARAMS(LTTNG_UST__TP_COMBINE_TOKENS(LTTNG_UST__TP_EXVAR, N)(__VA_ARGS__))
+#define LTTNG_UST__TP_DATA_PROTO_N(N, ...)	LTTNG_UST__TP_PARAMS(LTTNG_UST__TP_COMBINE_TOKENS(LTTNG_UST__TP_EXDATA_PROTO, N)(__VA_ARGS__))
+#define LTTNG_UST__TP_DATA_VAR_N(N, ...)	LTTNG_UST__TP_PARAMS(LTTNG_UST__TP_COMBINE_TOKENS(LTTNG_UST__TP_EXDATA_VAR, N)(__VA_ARGS__))
+#define LTTNG_UST__TP_ARGS_PROTO(...)		LTTNG_UST__TP_PROTO_N(LTTNG_UST__TP_NARGS(0, ##__VA_ARGS__), ##__VA_ARGS__)
+#define LTTNG_UST__TP_ARGS_VAR(...)		LTTNG_UST__TP_VAR_N(LTTNG_UST__TP_NARGS(0, ##__VA_ARGS__), ##__VA_ARGS__)
+#define LTTNG_UST__TP_ARGS_DATA_PROTO(...)	LTTNG_UST__TP_DATA_PROTO_N(LTTNG_UST__TP_NARGS(0, ##__VA_ARGS__), ##__VA_ARGS__)
+#define LTTNG_UST__TP_ARGS_DATA_VAR(...)	LTTNG_UST__TP_DATA_VAR_N(LTTNG_UST__TP_NARGS(0, ##__VA_ARGS__), ##__VA_ARGS__)
+#define LTTNG_UST__TP_PARAMS(...)		__VA_ARGS__
+
 
 TRACEPOINT_EVENT(
   TRACEPOINT_PROVIDER,
@@ -524,28 +588,60 @@ TRACEPOINT_EVENT(
 
 TRACEPOINT_EVENT(
   TRACEPOINT_PROVIDER,
-  add_cpu_info,
+  callback_end_ex,
   TP_ARGS(
-    const char *, tp_name_arg,
-    const void *, obj_id_arg,
-    const int, option_arg,
-    uint64_t, real_sec_arg,
-    int64_t, real_nsec_arg,
-    uint64_t, cpu_sec_arg,
-    int64_t, cpu_nsec_arg,
-    uint64_t, vctsw_arg,
-    uint64_t, nvctsw_arg
+    const void *, callback_arg,
+    const int64_t, is_extended_data_arg,
+    uint64_t, get_next_real_sec_arg,
+    int64_t, get_next_real_nsec_arg,
+    uint64_t, get_next_cpu_sec_arg,
+    int64_t, get_next_cpu_nsec_arg,
+    uint64_t, get_next_vctsw_arg,
+    uint64_t, get_next_nvctsw_arg,
+    uint64_t, get_next_count_arg,
+    const void *, cb_start_callback_arg,
+    const int64_t, cb_start_is_intra_process_arg,
+    uint64_t, cb_start_real_sec_arg,
+    int64_t, cb_start_real_nsec_arg,
+    uint64_t, cb_start_cpu_sec_arg,
+    int64_t, cb_start_cpu_nsec_arg,
+    uint64_t, cb_start_vctsw_arg,
+    uint64_t, cb_start_nvctsw_arg,
+    uint64_t, cb_start_count_arg,
+    const void *, cb_end_callback_arg,
+    uint64_t, cb_end_real_sec_arg,
+    int64_t, cb_end_real_nsec_arg,
+    uint64_t, cb_end_cpu_sec_arg,
+    int64_t, cb_end_cpu_nsec_arg,
+    uint64_t, cb_end_vctsw_arg,
+    uint64_t, cb_end_nvctsw_arg
   ),
   TP_FIELDS(
-    ctf_string(tp_name, tp_name_arg)
-    ctf_integer_hex(const void *, obj_id, obj_id_arg)
-    ctf_integer(int64_t, option, option_arg)
-    ctf_integer(uint64_t, real_sec, real_sec_arg)
-    ctf_integer(int64_t, real_nsec, real_nsec_arg)
-    ctf_integer(uint64_t, cpu_sec, cpu_sec_arg)
-    ctf_integer(int64_t, cpu_nsec, cpu_nsec_arg)
-    ctf_integer(uint64_t, vctsw, vctsw_arg)
-    ctf_integer(uint64_t, nvctsw, nvctsw_arg)
+    ctf_integer_hex(const void *, callback, callback_arg)
+    ctf_integer(int64_t, is_extended_data, is_extended_data_arg)
+    ctf_integer(uint64_t, get_next_real_sec, get_next_real_sec_arg)
+    ctf_integer(int64_t, get_next_real_nsec, get_next_real_nsec_arg)
+    ctf_integer(uint64_t, get_next_cpu_sec, get_next_cpu_sec_arg)
+    ctf_integer(int64_t, get_next_cpu_nsec, get_next_cpu_nsec_arg)
+    ctf_integer(uint64_t, get_next_vctsw, get_next_vctsw_arg)
+    ctf_integer(uint64_t, get_next_nvctsw, get_next_nvctsw_arg)
+    ctf_integer(uint64_t, get_next_count, get_next_count_arg)
+    ctf_integer_hex(const void *, cb_start_callback, cb_start_callback_arg)
+    ctf_integer(int64_t, cb_start_is_intra_process, cb_start_is_intra_process_arg)
+    ctf_integer(uint64_t, cb_start_real_sec, cb_start_real_sec_arg)
+    ctf_integer(int64_t, cb_start_real_nsec, cb_start_real_nsec_arg)
+    ctf_integer(uint64_t, cb_start_cpu_sec, cb_start_cpu_sec_arg)
+    ctf_integer(int64_t, cb_start_cpu_nsec, cb_start_cpu_nsec_arg)
+    ctf_integer(uint64_t, cb_start_vctsw, cb_start_vctsw_arg)
+    ctf_integer(uint64_t, cb_start_nvctsw, cb_start_nvctsw_arg)
+    ctf_integer(uint64_t, cb_start_count, cb_start_count_arg)
+    ctf_integer_hex(const void *, cb_end_callback, cb_end_callback_arg)
+    ctf_integer(uint64_t, cb_end_real_sec, cb_end_real_sec_arg)
+    ctf_integer(int64_t, cb_end_real_nsec, cb_end_real_nsec_arg)
+    ctf_integer(uint64_t, cb_end_cpu_sec, cb_end_cpu_sec_arg)
+    ctf_integer(int64_t, cb_end_cpu_nsec, cb_end_cpu_nsec_arg)
+    ctf_integer(uint64_t, cb_end_vctsw, cb_end_vctsw_arg)
+    ctf_integer(uint64_t, cb_end_nvctsw, cb_end_nvctsw_arg)
   )
 )
 

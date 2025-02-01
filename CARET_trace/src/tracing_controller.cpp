@@ -34,7 +34,7 @@
 #define SELECT_TOPICS_ENV_NAME "CARET_SELECT_TOPICS"
 #define IGNORE_TOPICS_ENV_NAME "CARET_IGNORE_TOPICS"
 #define IGNORE_PROCESSES_ENV_NAME "CARET_IGNORE_PROCESSES"
-#define CARET_ADD_CPU_INFO "CARET_ADD_CPU_INFO"
+#define CARET_ADD_THREAD_PERF_DATA "CARET_ADD_THREAD_PERF_DATA"
 
 bool partial_match(std::unordered_set<std::string> set, std::string target_name)
 {
@@ -166,12 +166,12 @@ TracingController::TracingController(bool use_log)
     ignored_process_names_.size() > 0 &&
     partial_match(ignored_process_names_, std::string(program_invocation_short_name));
 
-  std::string env_var = get_env_var(CARET_ADD_CPU_INFO);
+  std::string env_var = get_env_var(CARET_ADD_THREAD_PERF_DATA);
   std::transform(env_var.begin(), env_var.end(), env_var.begin(), ::tolower);
   if (env_var == "true" || env_var == "1" || env_var == "yes") {
-    is_add_cpu_info_ = true;
+    is_add_thread_perf_data_ = true;
   } else {
-    is_add_cpu_info_ = false;
+    is_add_thread_perf_data_ = false;
   }
 
   check_condition_set(selected_node_names_, use_log);
@@ -499,9 +499,9 @@ bool TracingController::is_allowed_process()
   return !is_ignored_process_;
 }
 
-bool TracingController::is_add_cpu_info()
+bool TracingController::is_add_thread_perf_data()
 {
-  return is_add_cpu_info_;
+  return is_add_thread_perf_data_;
 }
 
 bool TracingController::is_allowed_timer_handle(const void * timer_handle)
