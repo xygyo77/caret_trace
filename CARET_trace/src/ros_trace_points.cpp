@@ -669,7 +669,7 @@ void ros_trace_callback_start(const void * callback, bool is_intra_process)
   }
 }
 
-void ros_trace_callback_end_ex(const void * callback)
+void ros_trace_callback_end(const void * callback)
 {
   static auto & context = Singleton<Context>::get_instance();
   static auto & controller = context.get_controller();
