@@ -598,9 +598,7 @@ static void ros_trace_add_cpu_info(const char *tp_name, const void *callback, co
       
       tracepoint(
         TRACEPOINT_PROVIDER,
-        callback_end_ex,
-        callback,
-        true,   // extension (thread perf data)
+        add_cpu_info,
         // "get_next_ready"
         get_next_thread_perf_data.real_ts.tv_sec,
         get_next_thread_perf_data.real_ts.tv_nsec,
@@ -665,7 +663,7 @@ void ros_trace_callback_start(const void * callback, bool is_intra_process)
       callback << "," <<
       is_intra_process << std::endl;
 #endif
-    ros_trace_thread_perf_data(__func__, callback, is_intra_process);
+    ros_trace_add_cpu_info(__func__, callback, is_intra_process);
   }
 }
 
