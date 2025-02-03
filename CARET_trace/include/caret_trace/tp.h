@@ -41,6 +41,13 @@
 #define LTTNG_UST__TP_EXPROTO26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x,y z
 #define LTTNG_UST__TP_EXDATA_PROTO26(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z)	void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x,y
 ***/
+#if 0
+#define LTTNG_UST__TP_EXVAR5(a,b,c,d,e)					b,d
+#define LTTNG_UST__TP_EXDATA_VAR5(a,b,c,d,e)					__tp_data,b,d
+#define LTTNG_UST__TP_EXPROTO5(a,b,c,d,e)				a b,c d,e
+#define LTTNG_UST__TP_EXDATA_PROTO5(a,b,c,d,e)					void *__tp_data,a b,c d,e
+#endif
+
 #define LTTNG_UST__TP_EXVAR50(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
                               A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z)	\
                               b,d,f,h,j,l,n,p,r,t,v,x, \
@@ -586,6 +593,7 @@ TRACEPOINT_EVENT(
   )
 )
 
+/***
 TRACEPOINT_EVENT(
   TRACEPOINT_PROVIDER,
   callback_end_ex,
@@ -644,6 +652,103 @@ TRACEPOINT_EVENT(
     ctf_integer(uint64_t, cb_end_nvctsw, cb_end_nvctsw_arg)
   )
 )
+***/
+#if 0
+#ifndef CARET_PERF_DATA_DEC_
+#define CARET_PERF_DATA_DEC_
+struct PackPerfData {
+  uint16_t real_sec;
+  uint32_t real_nsec;
+  uint16_t cpu_sec;
+  uint32_t cpu_nsec;
+  uint16_t vctsw;
+  uint16_t nvctsw;
+  uint16_t count;
+};
+
+struct TraceEventData {
+  const void * cb_start_callback; 
+  const int8_t cb_start_is_intra_process; 
+  struct PackPerfData get_next;
+  struct PackPerfData cb_start;
+  struct PackPerfData cb_end;
+};
+#endif // CARET_PERF_DATA_DEC_
+
+TRACEPOINT_EVENT(
+  TRACEPOINT_PROVIDER,
+  callback_end_ex,
+  TP_ARGS(
+    const void *, callback_arg,
+    const int8_t, is_extended_data_arg,
+    struct TraceEventData, event_data_arg
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(const void *, callback, callback_arg)
+    ctf_integer(int8_t, is_extended_data, is_extended_data_arg)
+    ctf_blob(struct TraceEventData, event_data, event_data_arg)
+  )
+)
+#else
+TRACEPOINT_EVENT(
+  TRACEPOINT_PROVIDER,
+  callback_end_ex,
+  TP_ARGS(
+    const void *, callback_arg,
+    const int8_t, is_extended_data_arg,
+    uint16_t, get_next_real_sec_arg,
+    int32_t, get_next_real_nsec_arg,
+    uint16_t, get_next_cpu_sec_arg,
+    int32_t, get_next_cpu_nsec_arg,
+    uint16_t, get_next_vctsw_arg,
+    uint16_t, get_next_nvctsw_arg,
+    uint16_t, get_next_count_arg,
+    const void *, cb_start_callback_arg,
+    const int8_t, cb_start_is_intra_process_arg,
+    uint16_t, cb_start_real_sec_arg,
+    int32_t, cb_start_real_nsec_arg,
+    uint16_t, cb_start_cpu_sec_arg,
+    int32_t, cb_start_cpu_nsec_arg,
+    uint16_t, cb_start_vctsw_arg,
+    uint16_t, cb_start_nvctsw_arg,
+    uint16_t, cb_start_count_arg,
+    const void *, cb_end_callback_arg,
+    uint16_t, cb_end_real_sec_arg,
+    int32_t, cb_end_real_nsec_arg,
+    uint16_t, cb_end_cpu_sec_arg,
+    int32_t, cb_end_cpu_nsec_arg,
+    uint16_t, cb_end_vctsw_arg,
+    uint16_t, cb_end_nvctsw_arg
+  ),
+  TP_FIELDS(
+    ctf_integer_hex(const void *, cb, callback_arg)
+    ctf_integer(int8_t, is_extend, is_extended_data_arg)
+    ctf_integer(uint16_t, gn_rs, get_next_real_sec_arg)
+    ctf_integer(int32_t, gn_rns, get_next_real_nsec_arg)
+    ctf_integer(uint16_t, gn_cs, get_next_cpu_sec_arg)
+    ctf_integer(int32_t, gn_sns, get_next_cpu_nsec_arg)
+    ctf_integer(uint16_t, gn_csw, get_next_vctsw_arg)
+    ctf_integer(uint16_t, gn_ncsw, get_next_nvctsw_arg)
+    ctf_integer(uint16_t, cn_ct, get_next_count_arg)
+    ctf_integer_hex(const void *, cbst_cb, cb_start_callback_arg)
+    ctf_integer(int8_t, cbst_op, cb_start_is_intra_process_arg)
+    ctf_integer(uint16_t, cbst_rs, cb_start_real_sec_arg)
+    ctf_integer(int32_t, cbst_rns, cb_start_real_nsec_arg)
+    ctf_integer(uint16_t, cbst_cs, cb_start_cpu_sec_arg)
+    ctf_integer(int32_t, cbst_cns, cb_start_cpu_nsec_arg)
+    ctf_integer(uint16_t, cbst_csw, cb_start_vctsw_arg)
+    ctf_integer(uint16_t, cbst_ncsw, cb_start_nvctsw_arg)
+    ctf_integer(uint16_t, cbst_ct, cb_start_count_arg)
+    ctf_integer_hex(const void *, cbed_cb, cb_end_callback_arg)
+    ctf_integer(uint16_t, cbed_rs, cb_end_real_sec_arg)
+    ctf_integer(int32_t, cbed_rns, cb_end_real_nsec_arg)
+    ctf_integer(uint16_t, cbed_cs, cb_end_cpu_sec_arg)
+    ctf_integer(int32_t, cbed_cns, cb_end_cpu_nsec_arg)
+    ctf_integer(uint16_t, cbed_vcsw, cb_end_vctsw_arg)
+    ctf_integer(uint16_t, cbed_ncsw, cb_end_nvctsw_arg)
+  )
+)
+#endif
 
 // clang-format on
 

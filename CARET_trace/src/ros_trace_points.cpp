@@ -596,6 +596,8 @@ static void ros_trace_thread_perf_data(const char *tp_name, const void *callback
       get_time(cb_end_thread_perf_data);
       cb_end_thread_perf_data.callback = callback;
       
+#define SEL 1
+#if SEL==0
       tracepoint(
         TRACEPOINT_PROVIDER,
         callback_end_ex,
@@ -628,6 +630,79 @@ static void ros_trace_thread_perf_data(const char *tp_name, const void *callback
         cb_end_thread_perf_data.vctsw,
         cb_end_thread_perf_data.nvctsw
       );
+#elif SEL==1
+      tracepoint(
+        TRACEPOINT_PROVIDER,
+        callback_end_ex,
+        callback,
+        true,   // extension (thread perf data)
+        // "get_next_ready"
+        get_next_thread_perf_data.real_ts.tv_sec,
+        get_next_thread_perf_data.real_ts.tv_nsec,
+        get_next_thread_perf_data.cpu_ts.tv_sec,
+        get_next_thread_perf_data.cpu_ts.tv_nsec,
+        get_next_thread_perf_data.vctsw,
+        get_next_thread_perf_data.nvctsw,
+        get_next_thread_perf_data.count,
+        // "callback_start"
+        cb_start_thread_perf_data.callback,
+        cb_start_thread_perf_data.is_intra_process,
+        cb_start_thread_perf_data.real_ts.tv_sec,
+        cb_start_thread_perf_data.real_ts.tv_nsec,
+        cb_start_thread_perf_data.cpu_ts.tv_sec,
+        cb_start_thread_perf_data.cpu_ts.tv_nsec,
+        cb_start_thread_perf_data.vctsw,
+        cb_start_thread_perf_data.nvctsw,
+        cb_start_thread_perf_data.count,
+        // "callback_end"
+        cb_end_thread_perf_data.callback,
+        cb_end_thread_perf_data.real_ts.tv_sec,
+        cb_end_thread_perf_data.real_ts.tv_nsec,
+        cb_end_thread_perf_data.cpu_ts.tv_sec,
+        cb_end_thread_perf_data.cpu_ts.tv_nsec,
+        cb_end_thread_perf_data.vctsw,
+        cb_end_thread_perf_data.nvctsw
+      );
+#elif SEL==2
+      static struct PackPerfData get_next, cb_start, cb_end;
+      static struct TraceEventData event_data = {
+        nullptr, true,
+        &get_next, &cb_start, &cb_end,
+      };
+      // "get_next_ready"
+      get_next.real_sec = get_next_thread_perf_data.real_ts.tv_sec,
+      get_next.real_nsec = get_next_thread_perf_data.real_ts.tv_nsec,
+      get_next.cpu_sec = get_next_thread_perf_data.cpu_ts.tv_sec,
+      get_next.cpu_sec = get_next_thread_perf_data.cpu_ts.tv_nsec,
+      get_next.vctsw = get_next_thread_perf_data.vctsw,
+      get_next.nvctsw = get_next_thread_perf_data.nvctsw,
+      get_next.count = get_next_thread_perf_data.count,
+      // "callback_start"
+      event_data.cb_start_callback = cb_start_thread_perf_data.callback,
+      event_data.cb_start_is_intra_process = cb_start_thread_perf_data.is_intra_process,
+      cb_start.real_sec = cb_start_thread_perf_data.real_ts.tv_sec,
+      cb_start.real_nsec = cb_start_thread_perf_data.real_ts.tv_nsec,
+      cb_start.cpu_sec = cb_start_thread_perf_data.cpu_ts.tv_sec,
+      cb_start.cpu_sec = cb_start_thread_perf_data.cpu_ts.tv_nsec,
+      cb_start.vctsw = cb_start_thread_perf_data.vctsw,
+      cb_start.nvctsw = cb_start_thread_perf_data.nvctsw,
+      cb_start.count = cb_start_thread_perf_data.count,
+      // "callback_end"
+      cb_end.real_sec = cb_end_thread_perf_data.callback,
+      cb_end.real_nsec = cb_end_thread_perf_data.real_ts.tv_sec,
+      cb_end.cpu_sec = cb_end_thread_perf_data.real_ts.tv_nsec,
+      cb_end.cpu_sec = cb_end_thread_perf_data.cpu_ts.tv_sec,
+      cb_end.vctsw = cb_end_thread_perf_data.cpu_ts.tv_nsec,
+      cb_end.nvctsw = cb_end_thread_perf_data.vctsw,
+      cb_end.count = cb_end_thread_perf_data.nvctsw
+      tracepoint(
+        TRACEPOINT_PROVIDER,
+        callback_end_ex,
+        callback,
+        true,
+        &event_data
+      );
+#endif
     #ifdef DEBUG_OUTPUT
       std::cerr << "extended callback_end," <<
       tp_name << "," <<
@@ -681,6 +756,20 @@ void ros_trace_callback_end(const void * callback)
   if (controller.is_allowed_callback(callback) &&
     context.is_recording_allowed())
   {
+#if SEL==2
+      static struct PackPerfData get_next, cb_start, cb_end;
+      static struct TraceEventData event_data = {
+        nullptr, false,
+        &get_next, &cb_start, &cb_end,
+      };
+      tracepoint(
+        TRACEPOINT_PROVIDER,
+        callback_end_ex,
+        callback,
+        false,
+        &event_data
+      );
+#elif SEL==1
     if (!controller.is_add_thread_perf_data()) {
       tracepoint(
         TRACEPOINT_PROVIDER,
@@ -694,6 +783,8 @@ void ros_trace_callback_end(const void * callback)
         nullptr,
         0, 0, 0, 0, 0, 0
       );
+#endif
+
     #ifdef DEBUG_OUTPUT
       std::cerr << "callback_end," <<
       tp_name << "," <<
