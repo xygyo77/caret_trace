@@ -526,26 +526,60 @@ TRACEPOINT_EVENT(
   TRACEPOINT_PROVIDER,
   add_cpu_info,
   TP_ARGS(
-    const char *, tp_name_arg,
-    const void *, obj_id_arg,
-    const int, option_arg,
-    uint64_t, real_sec_arg,
-    int64_t, real_nsec_arg,
-    uint64_t, cpu_sec_arg,
-    int64_t, cpu_nsec_arg,
-    uint64_t, vctsw_arg,
-    uint64_t, nvctsw_arg
+    // get_next_ready
+    uint16_t, get_next_real_sec_arg,
+    int32_t, get_next_real_nsec_arg,
+    uint16_t, get_next_cpu_sec_arg,
+    int32_t, get_next_cpu_nsec_arg,
+    uint16_t, get_next_vctsw_arg,
+    uint16_t, get_next_nvctsw_arg,
+    uint16_t, get_next_count_arg,
+    // callback_start
+    const void *, cb_start_callback_arg,
+    const int8_t, cb_start_is_intra_process_arg,
+    uint16_t, cb_start_real_sec_arg,
+    int32_t, cb_start_real_nsec_arg,
+    uint16_t, cb_start_cpu_sec_arg,
+    int32_t, cb_start_cpu_nsec_arg,
+    uint16_t, cb_start_vctsw_arg,
+    uint16_t, cb_start_nvctsw_arg,
+    uint16_t, cb_start_count_arg,
+    // callback_end
+    const void *, cb_end_callback_arg,
+    uint16_t, cb_end_real_sec_arg,
+    int32_t, cb_end_real_nsec_arg,
+    uint16_t, cb_end_cpu_sec_arg,
+    int32_t, cb_end_cpu_nsec_arg,
+    uint16_t, cb_end_vctsw_arg,
+    uint16_t, cb_end_nvctsw_arg
   ),
   TP_FIELDS(
-    ctf_string(tp_name, tp_name_arg)
-    ctf_integer_hex(const void *, obj_id, obj_id_arg)
-    ctf_integer(int64_t, option, option_arg)
-    ctf_integer(uint64_t, real_sec, real_sec_arg)
-    ctf_integer(int64_t, real_nsec, real_nsec_arg)
-    ctf_integer(uint64_t, cpu_sec, cpu_sec_arg)
-    ctf_integer(int64_t, cpu_nsec, cpu_nsec_arg)
-    ctf_integer(uint64_t, vctsw, vctsw_arg)
-    ctf_integer(uint64_t, nvctsw, nvctsw_arg)
+    // get_next_ready
+    ctf_integer(uint16_t, gn_rs, get_next_real_sec_arg)
+    ctf_integer(int32_t, gn_rns, get_next_real_nsec_arg)
+    ctf_integer(uint16_t, gn_cs, get_next_cpu_sec_arg)
+    ctf_integer(int32_t, gn_cns, get_next_cpu_nsec_arg)
+    ctf_integer(uint16_t, gn_ctx, get_next_vctsw_arg)
+    ctf_integer(uint16_t, gn_nctx, get_next_nvctsw_arg)
+    ctf_integer(uint16_t, gn_ct, get_next_count_arg)
+    // callback_start
+    ctf_integer_hex(const void *, st_cb, cb_start_callback_arg)
+    ctf_integer(int8_t, st_op, cb_start_is_intra_process_arg)
+    ctf_integer(uint16_t, st_rs, cb_start_real_sec_arg)
+    ctf_integer(int32_t, st_rns, cb_start_real_nsec_arg)
+    ctf_integer(uint16_t, st_cs, cb_start_cpu_sec_arg)
+    ctf_integer(int32_t, st_cns, cb_start_cpu_nsec_arg)
+    ctf_integer(uint16_t, st_ctx, cb_start_vctsw_arg)
+    ctf_integer(uint16_t, st_nctx, cb_start_nvctsw_arg)
+    ctf_integer(uint16_t, st_ct, cb_start_count_arg)
+    // callback_end
+    ctf_integer_hex(const void *, ed_cb, cb_end_callback_arg)
+    ctf_integer(uint16_t, ed_rs, cb_end_real_sec_arg)
+    ctf_integer(int32_t, ed_rns, cb_end_real_nsec_arg)
+    ctf_integer(uint16_t, ed_cs, cb_end_cpu_sec_arg)
+    ctf_integer(int32_t, ed_cns, cb_end_cpu_nsec_arg)
+    ctf_integer(uint16_t, ed_ctx, cb_end_vctsw_arg)
+    ctf_integer(uint16_t, ed_nctx, cb_end_nvctsw_arg)
   )
 )
 
