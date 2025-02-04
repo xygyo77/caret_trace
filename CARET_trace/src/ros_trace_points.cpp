@@ -627,9 +627,9 @@ static void ros_trace_add_cpu_info(const char *tp_name, const void *callback, co
         cb_end_thread_perf_data.nvctsw
       );
     #ifdef DEBUG_OUTPUT
-      std::cerr << "extended callback_end," <<
+      std::cerr << "add_cpu_info," <<
       tp_name << "," <<
-      obj_id << std::endl;
+      callback << std::endl;
     #endif
       get_next_thread_perf_data.in_process = false;
       cb_start_thread_perf_data.in_process = false;
