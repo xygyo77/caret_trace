@@ -66,6 +66,25 @@
                                      void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x, \
                                                      A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T,U V,W X,Y Z
 
+
+#define LTTNG_UST__TP_EXVAR46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                              A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V)	\
+                              b,d,f,h,j,l,n,p,r,t,v,x, \
+                              B,D,F,H,J,L,N,P,R,T,V
+#define LTTNG_UST__TP_EXDATA_VAR46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                   A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V) \
+                                   __tp_data,b,d,f,h,j,l,n,p,r,t,v,x, \
+                                             B,D,F,H,J,L,N,P,R,T,V
+
+#define LTTNG_UST__TP_EXPROTO46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V) \
+                                a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x, \
+                                A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T,U V
+#define LTTNG_UST__TP_EXDATA_PROTO46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                     A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V) \
+                                     void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x, \
+                                                     A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T,U V
+
 #define LTTNG_UST__TP_EXVAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	b,d,f,h,j,l,n,p,r,t,v
 #define LTTNG_UST__TP_EXDATA_VAR22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	__tp_data,b,d,f,h,j,l,n,p,r,t,v
 #define LTTNG_UST__TP_EXPROTO22(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)	a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v
@@ -727,8 +746,8 @@ TRACEPOINT_EVENT(
     ctf_integer(int32_t, gn_rns, get_next_real_nsec_arg)
     ctf_integer(uint16_t, gn_cs, get_next_cpu_sec_arg)
     ctf_integer(int32_t, gn_cns, get_next_cpu_nsec_arg)
-    ctf_integer(uint16_t, gn_cs, get_next_vctsw_arg)
-    ctf_integer(uint16_t, gn_ncs, get_next_nvctsw_arg)
+    ctf_integer(uint16_t, gn_ctx, get_next_vctsw_arg)
+    ctf_integer(uint16_t, gn_bctx, get_next_nvctsw_arg)
     ctf_integer(uint16_t, gn_ct, get_next_count_arg)
     // callback_start
     ctf_integer_hex(const void *, st_cb, cb_start_callback_arg)
@@ -737,8 +756,8 @@ TRACEPOINT_EVENT(
     ctf_integer(int32_t, st_rns, cb_start_real_nsec_arg)
     ctf_integer(uint16_t, st_cs, cb_start_cpu_sec_arg)
     ctf_integer(int32_t, st_cns, cb_start_cpu_nsec_arg)
-    ctf_integer(uint16_t, st_cs, cb_start_vctsw_arg)
-    ctf_integer(uint16_t, st_ncs, cb_start_nvctsw_arg)
+    ctf_integer(uint16_t, st_ctx, cb_start_vctsw_arg)
+    ctf_integer(uint16_t, st_nctx, cb_start_nvctsw_arg)
     ctf_integer(uint16_t, st_ct, cb_start_count_arg)
     // callback_end
     ctf_integer_hex(const void *, ed_cb, cb_end_callback_arg)
@@ -746,8 +765,8 @@ TRACEPOINT_EVENT(
     ctf_integer(int32_t, ed_rns, cb_end_real_nsec_arg)
     ctf_integer(uint16_t, ed_cs, cb_end_cpu_sec_arg)
     ctf_integer(int32_t, ed_cns, cb_end_cpu_nsec_arg)
-    ctf_integer(uint16_t, ed_cs, cb_end_vctsw_arg)
-    ctf_integer(uint16_t, ed_ncs, cb_end_nvctsw_arg)
+    ctf_integer(uint16_t, ed_ctx, cb_end_vctsw_arg)
+    ctf_integer(uint16_t, ed_nctx, cb_end_nvctsw_arg)
   )
 )
 #endif
