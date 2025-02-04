@@ -54,7 +54,7 @@
 std::unique_ptr<std::thread> trace_node_thread;
 thread_local bool trace_filter_is_rcl_publish_recorded;
 
-/ performance data for thread
+// performance data for thread
 struct alignas(64) ThreadPerfData {
   bool in_process;
   const void * callback;
