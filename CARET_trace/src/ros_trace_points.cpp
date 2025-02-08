@@ -55,17 +55,33 @@ std::unique_ptr<std::thread> trace_node_thread;
 thread_local bool trace_filter_is_rcl_publish_recorded;
 
 // performance data for thread
-struct alignas(64) ThreadPerfData {
-  bool in_process;
-  const void * callback;
-  bool is_intra_process;
-  struct timespec real_ts, cpu_ts;
-  uint64_t vctsw, nvctsw;
-  uint64_t count;
+enum ADD_CPU_INFO_STATE {
+  ST_IDLE,
+  ST_GET_NEXT,
+  ST_CB_START,
+};
+struct ThreadPerfData {
+  bool in_process = false;
+  const void * callback = nullptr;
+  bool is_intra_process = 0;
+  int16_t real_sec = 0;
+  uint32_t real_nsec = 0;
+  int16_t cpu_sec = 0;
+  uint32_t cpu_nsec = 0;
+  uint16_t vctsw = 0;
+  uint16_t nvctsw = 0;
+  uint16_t count = 0;
 }; 
-thread_local struct ThreadPerfData get_next_thread_perf_data;
-thread_local struct ThreadPerfData cb_start_thread_perf_data;
-thread_local struct ThreadPerfData cb_end_thread_perf_data;
+struct alignas(64) AddCpuInfo {
+  ADD_CPU_INFO_STATE state = ST_IDLE;
+  uint16_t state_error = 0;
+  uint16_t oth_error = 0;
+  ThreadPerfData get_next_thread_perf_data;
+  ThreadPerfData cb_start_thread_perf_data;
+  ThreadPerfData cb_end_thread_perf_data;
+};
+
+thread_local AddCpuInfo add_cpu_info_struct;
 
 using std::string;
 using std::vector;
@@ -529,8 +545,24 @@ void ros_trace_rclcpp_timer_link_node(const void * timer_handle, const void * no
 // set thread performance data
 void get_time(ThreadPerfData &thread_data)
 {
-  clock_gettime(CLOCK_MONOTONIC, &thread_data.real_ts);
-  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &thread_data.cpu_ts);
+  struct timespec ts;
+  int rc;
+  if (!(rc = clock_gettime(CLOCK_MONOTONIC, &ts))) {
+    thread_data.real_sec = ts.tv_sec;
+    thread_data.real_nsec = ts.tv_nsec;
+  } else {
+    std::cerr << "### clock_gettime(CLOCK_MONOTONIC): " << rc << std::endl;
+    thread_data.real_sec = 0;
+    thread_data.real_nsec = 0;
+  }
+  if (!(rc = clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts))) {
+    thread_data.cpu_sec = ts.tv_sec;
+    thread_data.cpu_nsec = ts.tv_nsec;
+  } else {
+    std::cerr << "### clock_gettime(CLOCK_THREAD_CPUTIME_ID): " << rc << std::endl;
+    thread_data.cpu_sec = 0;
+    thread_data.cpu_nsec = 0;
+  }
 }
 
 void read_context_switches(ThreadPerfData &thread_data) {
@@ -543,7 +575,7 @@ void read_context_switches(ThreadPerfData &thread_data) {
         while (std::getline(file, line)) {
             std::istringstream iss(line);
             std::string key;
-            uint64_t value;
+            uint16_t value;
 
             // Key-Value
             if (iss >> key >> value) {
@@ -561,7 +593,7 @@ void read_context_switches(ThreadPerfData &thread_data) {
 }
 
 // set thread performance data to tracepoint
-static void ros_trace_add_cpu_info(const char *tp_name, const void *callback, const bool is_intra_process)
+void ros_trace_add_cpu_info(const char *tp_name, const void *callback, const bool is_intra_process)
 {
   static auto & context = Singleton<Context>::get_instance();
   static auto & controller = context.get_controller();
@@ -570,77 +602,115 @@ static void ros_trace_add_cpu_info(const char *tp_name, const void *callback, co
     return;
   } else {
     // get performance data for threads
-    if (strstr(tp_name, "_start")) {
-      if (!cb_start_thread_perf_data.in_process) {
-        read_context_switches(cb_start_thread_perf_data);
-        get_time(cb_start_thread_perf_data);
-        cb_start_thread_perf_data.callback = callback;
-        cb_start_thread_perf_data.is_intra_process = is_intra_process;
-        cb_start_thread_perf_data.in_process = true;
-        cb_start_thread_perf_data.count = 1;
+    auto& get_next = add_cpu_info_struct.get_next_thread_perf_data;
+    auto& cb_start = add_cpu_info_struct.cb_start_thread_perf_data;
+    auto& cb_end = add_cpu_info_struct.cb_end_thread_perf_data;
+    if (strstr(tp_name, "_next")) {
+      //std::cerr << getpid() << ": " << gettid() << " GET_NEXT" << std::endl;
+      // get_next_ready
+      if (add_cpu_info_struct.state > ST_GET_NEXT) {
+        add_cpu_info_struct.state_error++;
+        std::cerr << "### [ADD_CPU_INFO] State error#0: state=" << add_cpu_info_struct.state << " err=" << add_cpu_info_struct.state_error << std::endl;
+        get_next.in_process = false;
+        cb_start.in_process = false;
+      }
+      add_cpu_info_struct.state = ST_GET_NEXT;
+      if (!get_next.in_process) {
+        read_context_switches(get_next);
+        get_time(get_next);
+        get_next.in_process = true;
+        get_next.count = 1;
       } else {
-        cb_start_thread_perf_data.count++;
+        get_next.count++;
+      }
+    }
+    else if (strstr(tp_name, "_start")) {
+      //std::cerr << getpid() << ": " << gettid() << " START" << std::endl;
+      if (add_cpu_info_struct.state == ST_IDLE) {
+        std::cerr << "### [ADD_CPU_INFO] State error#1: state=" << add_cpu_info_struct.state << " err=" << add_cpu_info_struct.state_error << std::endl;
+        add_cpu_info_struct.state_error++;
+        add_cpu_info_struct.state = ST_IDLE;
+        get_next.in_process = false;
+        cb_start.in_process = false;
+        goto L_END;
+      }
+      add_cpu_info_struct.state = ST_CB_START;
+      if (!cb_start.in_process) {
+        read_context_switches(add_cpu_info_struct.cb_start_thread_perf_data);
+        get_time(cb_start);
+        cb_start.callback = callback;
+        cb_start.is_intra_process = is_intra_process;
+        cb_start.in_process = true;
+        cb_start.count = 1;
+      } else {
+        cb_start.count++;
       }
     } else if (strstr(tp_name, "_end")) {
-      // aggregation of callback_end
-      read_context_switches(cb_end_thread_perf_data);
-      get_time(cb_end_thread_perf_data);
-      cb_end_thread_perf_data.callback = callback;
+      //std::cerr << getpid() << ": " << gettid() << " END" << std::endl;
+      // callback_end
+      if (add_cpu_info_struct.state <= ST_GET_NEXT) {
+        std::cerr << "### [ADD_CPU_INFO] State error#2: state=" << add_cpu_info_struct.state << " err=" << add_cpu_info_struct.state_error << std::endl;
+        add_cpu_info_struct.state_error++;
+        add_cpu_info_struct.state = ST_IDLE;
+        get_next.in_process = false;
+        cb_start.in_process = false;
+        goto L_END;
+      }
+
+      add_cpu_info_struct.state = ST_IDLE;
+      read_context_switches(cb_end);
+      get_time(cb_end);
+      cb_end.callback = callback;
       
       tracepoint(
         TRACEPOINT_PROVIDER,
         add_cpu_info,
         // "get_next_ready"
-        get_next_thread_perf_data.real_ts.tv_sec,
-        get_next_thread_perf_data.real_ts.tv_nsec,
-        get_next_thread_perf_data.cpu_ts.tv_sec,
-        get_next_thread_perf_data.cpu_ts.tv_nsec,
-        get_next_thread_perf_data.vctsw,
-        get_next_thread_perf_data.nvctsw,
-        get_next_thread_perf_data.count,
+        get_next.real_sec,
+        get_next.real_nsec,
+        get_next.cpu_sec,
+        get_next.cpu_nsec,
+        get_next.vctsw,
+        get_next.nvctsw,
+        get_next.count,
         // "callback_start"
-        cb_start_thread_perf_data.callback,
-        cb_start_thread_perf_data.is_intra_process,
-        cb_start_thread_perf_data.real_ts.tv_sec,
-        cb_start_thread_perf_data.real_ts.tv_nsec,
-        cb_start_thread_perf_data.cpu_ts.tv_sec,
-        cb_start_thread_perf_data.cpu_ts.tv_nsec,
-        cb_start_thread_perf_data.vctsw,
-        cb_start_thread_perf_data.nvctsw,
-        cb_start_thread_perf_data.count,
+        cb_start.callback,
+        cb_start.is_intra_process,
+        cb_start.real_sec,
+        cb_start.real_nsec,
+        cb_start.cpu_sec,
+        cb_start.cpu_nsec,
+        cb_start.vctsw,
+        cb_start.nvctsw,
+        cb_start.count,
         // "callback_end"
-        cb_end_thread_perf_data.callback,
-        cb_end_thread_perf_data.real_ts.tv_sec,
-        cb_end_thread_perf_data.real_ts.tv_nsec,
-        cb_end_thread_perf_data.cpu_ts.tv_sec,
-        cb_end_thread_perf_data.cpu_ts.tv_nsec,
-        cb_end_thread_perf_data.vctsw,
-        cb_end_thread_perf_data.nvctsw
+        cb_end.callback,
+        cb_end.real_sec,
+        cb_end.real_nsec,
+        cb_end.cpu_sec,
+        cb_end.cpu_nsec,
+        cb_end.vctsw,
+        cb_end.nvctsw
       );
-    #ifdef DEBUG_OUTPUT
+#ifdef DEBUG_OUTPUT
       std::cerr << "add_cpu_info," <<
       tp_name << "," <<
       callback << std::endl;
-    #endif
-      get_next_thread_perf_data.in_process = false;
-      cb_start_thread_perf_data.in_process = false;
+#endif
+      get_next.in_process = false;
+      cb_start.in_process = false;
       /***
-      get_next_thread_perf_data = {0}:
-      cb_start_thread_perf_data = {0}:
-      cb_end_thread_perf_data = {0}:
+      get_next= {}:
+      cb_start= {}:
+      cb_end= {}:
       ***/
     } else {
-      // get_next_ready
-      if (!get_next_thread_perf_data.in_process) {
-        read_context_switches(get_next_thread_perf_data);
-        get_time(get_next_thread_perf_data);
-        get_next_thread_perf_data.in_process = true;
-        get_next_thread_perf_data.count = 0;
-      } else {
-        get_next_thread_perf_data.count++;
-      }
+      std::cerr << "### [ADD_CPU_INFO] Invalid trace: " << tp_name << std::endl;
+      add_cpu_info_struct.oth_error++;
     }
   }
+L_END:
+  ;
 }
 
 void ros_trace_callback_start(const void * callback, bool is_intra_process)
@@ -1298,10 +1368,19 @@ void ros_trace_rclcpp_executor_wait_for_work(
 
 void ros_trace_rclcpp_executor_get_next_ready()
 {
-// #ifdef DEBUG_OUTPUT
-//   std::cerr << "rclcpp_executor_get_next_ready," << std::endl;
-// #endif
-  ros_trace_add_cpu_info(__func__, nullptr, 0);
+  static auto & context = Singleton<Context>::get_instance();
+  static auto & controller = context.get_controller();
+
+  if (!controller.is_allowed_process()) {
+    return;
+  }
+  if (context.is_recording_allowed())
+  {
+#ifdef DEBUG_OUTPUT
+    std::cerr << "rclcpp_executor_get_next_ready," << std::endl;
+#endif
+    ros_trace_add_cpu_info(__func__, nullptr, 0);
+  }
 }
 
 void ros_trace_rcl_take(
