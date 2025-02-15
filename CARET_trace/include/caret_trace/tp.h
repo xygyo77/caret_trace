@@ -31,23 +31,23 @@
 #include <lttng/tracepoint.h>
 #include <lttng/tracepoint-event.h>
 
-#define LTTNG_UST__TP_EXVAR46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
-                              A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V)	\
+#define LTTNG_UST__TP_EXVAR44(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                              A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T)	\
                               b,d,f,h,j,l,n,p,r,t,v,x, \
-                              B,D,F,H,J,L,N,P,R,T,V
-#define LTTNG_UST__TP_EXDATA_VAR46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
-                                   A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V) \
+                              B,D,F,H,J,L,N,P,R,T
+#define LTTNG_UST__TP_EXDATA_VAR44(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                   A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T) \
                                    __tp_data,b,d,f,h,j,l,n,p,r,t,v,x, \
-                                             B,D,F,H,J,L,N,P,R,T,V
+                                             B,D,F,H,J,L,N,P,R,T
 
-#define LTTNG_UST__TP_EXPROTO46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
-                                A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V) \
+#define LTTNG_UST__TP_EXPROTO44(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T) \
                                 a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x, \
-                                A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T,U V
-#define LTTNG_UST__TP_EXDATA_PROTO46(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
-                                     A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V) \
+                                A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T
+#define LTTNG_UST__TP_EXDATA_PROTO44(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x, \
+                                     A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T) \
                                      void *__tp_data,a b,c d,e f,g h,i j,k l,m n,o p,q r,s t,u v,w x, \
-                                                     A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T,U V
+                                                     A B,C D,E F,G H,I J,K L,M N,O P,Q R,S T
 
 #undef LTTNG_UST__TP_NARGS
 #undef LTTNG_UST___TP_NARGS
@@ -638,7 +638,6 @@ TRACEPOINT_EVENT(
     int32_t, cb_start_cpu_nsec_arg,
     uint16_t, cb_start_vctsw_arg,
     uint16_t, cb_start_nvctsw_arg,
-    uint16_t, cb_start_count_arg,
     // callback_end
     const void *, cb_end_callback_arg,
     uint16_t, cb_end_real_sec_arg,
@@ -666,7 +665,6 @@ TRACEPOINT_EVENT(
     ctf_integer(int32_t, st_cns, cb_start_cpu_nsec_arg)
     ctf_integer(uint16_t, st_ctx, cb_start_vctsw_arg)
     ctf_integer(uint16_t, st_nctx, cb_start_nvctsw_arg)
-    ctf_integer(uint16_t, st_ct, cb_start_count_arg)
     // callback_end
     ctf_integer_hex(const void *, ed_cb, cb_end_callback_arg)
     ctf_integer(uint16_t, ed_rs, cb_end_real_sec_arg)

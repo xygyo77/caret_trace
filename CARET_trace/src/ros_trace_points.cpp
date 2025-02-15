@@ -61,7 +61,6 @@ enum ADD_CPU_INFO_STATE {
   ST_CB_START,
 };
 struct ThreadPerfData {
-  bool in_process = false;
   const void * callback = nullptr;
   bool is_intra_process = 0;
   int16_t real_sec = 0;
@@ -608,56 +607,41 @@ void ros_trace_add_cpu_info(const char *tp_name, const void *callback, const boo
     if (strstr(tp_name, "_next")) {
       //std::cerr << getpid() << ": " << gettid() << " GET_NEXT" << std::endl;
       // get_next_ready
-      if (add_cpu_info_struct.state > ST_GET_NEXT) {
+      if (add_cpu_info_struct.state == ST_CB_START) {
         add_cpu_info_struct.state_error++;
         std::cerr << "### [ADD_CPU_INFO] State error#0: state=" << add_cpu_info_struct.state << " err=" << add_cpu_info_struct.state_error << std::endl;
-        get_next.in_process = false;
-        cb_start.in_process = false;
       }
       add_cpu_info_struct.state = ST_GET_NEXT;
-      if (!get_next.in_process) {
-        read_context_switches(get_next);
-        get_time(get_next);
-        get_next.in_process = true;
-        get_next.count = 1;
-      } else {
-        get_next.count++;
-      }
+      read_context_switches(get_next);
+      get_time(get_next);
+      get_next.count++;
     }
     else if (strstr(tp_name, "_start")) {
       //std::cerr << getpid() << ": " << gettid() << " START" << std::endl;
-      if (add_cpu_info_struct.state == ST_IDLE) {
+      if (add_cpu_info_struct.state == ST_IDLE or add_cpu_info_struct.state == ST_CB_START) {
         std::cerr << "### [ADD_CPU_INFO] State error#1: state=" << add_cpu_info_struct.state << " err=" << add_cpu_info_struct.state_error << std::endl;
         add_cpu_info_struct.state_error++;
         add_cpu_info_struct.state = ST_IDLE;
-        get_next.in_process = false;
-        cb_start.in_process = false;
+        cb_start.count = 0;
         goto L_END;
       }
       add_cpu_info_struct.state = ST_CB_START;
-      if (!cb_start.in_process) {
-        read_context_switches(add_cpu_info_struct.cb_start_thread_perf_data);
-        get_time(cb_start);
-        cb_start.callback = callback;
-        cb_start.is_intra_process = is_intra_process;
-        cb_start.in_process = true;
-        cb_start.count = 1;
-      } else {
-        cb_start.count++;
-      }
+      read_context_switches(add_cpu_info_struct.cb_start_thread_perf_data);
+      get_time(cb_start);
+      cb_start.callback = callback;
+      cb_start.is_intra_process = is_intra_process;
+      cb_start.count = 1;
     } else if (strstr(tp_name, "_end")) {
       //std::cerr << getpid() << ": " << gettid() << " END" << std::endl;
       // callback_end
-      if (add_cpu_info_struct.state <= ST_GET_NEXT) {
+      if (add_cpu_info_struct.state != ST_CB_START) {
         std::cerr << "### [ADD_CPU_INFO] State error#2: state=" << add_cpu_info_struct.state << " err=" << add_cpu_info_struct.state_error << std::endl;
         add_cpu_info_struct.state_error++;
         add_cpu_info_struct.state = ST_IDLE;
-        get_next.in_process = false;
-        cb_start.in_process = false;
+        cb_start.count = 0;
         goto L_END;
       }
 
-      add_cpu_info_struct.state = ST_IDLE;
       read_context_switches(cb_end);
       get_time(cb_end);
       cb_end.callback = callback;
@@ -682,7 +666,6 @@ void ros_trace_add_cpu_info(const char *tp_name, const void *callback, const boo
         cb_start.cpu_nsec,
         cb_start.vctsw,
         cb_start.nvctsw,
-        cb_start.count,
         // "callback_end"
         cb_end.callback,
         cb_end.real_sec,
@@ -697,8 +680,9 @@ void ros_trace_add_cpu_info(const char *tp_name, const void *callback, const boo
       tp_name << "," <<
       callback << std::endl;
 #endif
-      get_next.in_process = false;
-      cb_start.in_process = false;
+      add_cpu_info_struct.state = ST_IDLE;
+      get_next.count = 0;
+      cb_start.count = 0;
       /***
       get_next= {}:
       cb_start= {}:
