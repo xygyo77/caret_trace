@@ -157,6 +157,8 @@ void run_caret_trace_node()
   option.use_global_arguments(false);
   auto trace_node = std::make_shared<TraceNode>(node_name_base, option, lttng, data_container);
   RCLCPP_INFO(trace_node->get_logger(), "%s started", trace_node->get_fully_qualified_name());
+  int status = static_cast<int>(trace_node->get_status());
+  RCLCPP_INFO(trace_node->get_logger(), "STATUS %d", status);
 
   ignore_rcl_timer_init = is_python3_command();
 
