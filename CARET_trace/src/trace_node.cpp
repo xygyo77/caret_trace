@@ -30,6 +30,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <filesystem>
 #include <memory>
 #include <shared_mutex>
 #include <string>
@@ -73,7 +74,7 @@ TraceNode::TraceNode(
     create_wall_timer(std::chrono::milliseconds(100), std::bind(&TraceNode::timer_callback, this));
   timer_->cancel();
   timer2_ =
-    create_wall_timer(std::chrono::milliseconds(100), std::bind(&TraceNode::timer_callback2, this));
+    create_wall_timer(std::chrono::milliseconds(3000), std::bind(&TraceNode::timer_callback2, this));
 
   if (!lttng_session->started_session_running()) {
     status_ = TRACE_STATUS::WAIT;
@@ -268,51 +269,70 @@ void TraceNode::timer_callback()
 void TraceNode::timer_callback2()
 {
   RCLCPP_INFO(rclcpp::get_logger("caret"), "TraceNode Timer callback 2");
-  const std::string CONTROL_FILE = "/home/akm/.lttng/CONTROL";
+  auto home = std::string(std::getenv("HOME"));
+  const std::string start_control_file = home + "/.lttng/caret.start";
+  const std::string stop_control_file = home + "/.lttng/caret.stop";
+  debug(start_control_file + ": " + stop_control_file);
+
   if (start_msg_received_) {
     // normal enviromnet
     timer2_->cancel();
-    unlink(CONTROL_FILE.c_str());
+    unlink(start_control_file.c_str());
     return;
   }
   // multi-container environment
   int recording_frequency = -1;
+  if (std::filesystem::exists(start_control_file)) {
+    std::ifstream file(start_control_file.c_str());
+    // Start
+    if (file.is_open()) {
+      file >> recording_frequency;
+      file.close();
 
-  std::ifstream file(CONTROL_FILE.c_str());
-  if (file.is_open()) {
-    file >> recording_frequency;
-    file.close();
-    if (recording_frequency == -1) {
-        RCLCPP_INFO(rclcpp::get_logger("caret"), "TraceNode file read error %s", CONTROL_FILE.c_str());
+      debug("TraceNode start file existed");
+      unlink(start_control_file.c_str());
+
+      static auto & context = Singleton<Context>::get_instance();
+      static auto & clock = context.get_clock();
+      // As long as PREPARE state, data of initialization trace point are stored into pending.
+      // Before calling the caret_init trace point,
+      // transition to the prepare state to set is_recording_allowed to False.
+      status_ = TRACE_STATUS::PREPARE;
+
+      // Tracepoints for monotonic time and system time conversion
+      auto distribution = getenv("ROS_DISTRO");
+      tracepoint(TRACEPOINT_PROVIDER, caret_init, clock.now(), distribution);
+
+      data_container_->reset();
+      data_container_->start_recording();
+
+      debug("Transitioned to PREPARE status 2.");
+
+      if (recording_frequency != -1) {
+        record_block_size_ = recording_frequency / 10;  // 100ms timer: 10Hz
+        if (record_block_size_ <= 0) {
+          record_block_size_ = 1;
+        }
+      }
+      run_timer();
+    } else {
+      debug("TraceNode start file open error");
     }
+  }
+  if (std::filesystem::exists(stop_control_file)) {
+    // Stop
+    debug("TraceNode stop file existed");
+    unlink(stop_control_file.c_str());
 
-    RCLCPP_INFO(rclcpp::get_logger("caret"), "TraceNode file exist %s", CONTROL_FILE.c_str());
-    unlink(CONTROL_FILE.c_str());
-    timer2_->cancel();
-
-    static auto & context = Singleton<Context>::get_instance();
-    static auto & clock = context.get_clock();
-    // As long as PREPARE state, data of initialization trace point are stored into pending.
-    // Before calling the caret_init trace point,
-    // transition to the prepare state to set is_recording_allowed to False.
-    status_ = TRACE_STATUS::PREPARE;
-
-    // Tracepoints for monotonic time and system time conversion
-    auto distribution = getenv("ROS_DISTRO");
-    tracepoint(TRACEPOINT_PROVIDER, caret_init, clock.now(), distribution);
-
-    data_container_->reset();
-    data_container_->start_recording();
-
-    debug("Transitioned to PREPARE status 2.");
-
-    record_block_size_ = recording_frequency / 10;  // 100ms timer: 10Hz
-    if (record_block_size_ <= 0) {
-      record_block_size_ = 1;
+    if (lttng_session_->is_session_running()) {
+      publish_status(status_);
+      return;
     }
-    run_timer();
-  } else {
-    RCLCPP_INFO(rclcpp::get_logger("caret"), "TraceNode file open error %s", CONTROL_FILE.c_str());
+  
+    status_ = TRACE_STATUS::WAIT;
+  
+    publish_status(status_);
+    debug("Transitioned to WAIT status.");
   }
 }
 
