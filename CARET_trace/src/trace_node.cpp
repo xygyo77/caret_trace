@@ -244,6 +244,8 @@ void TraceNode::timer_callback()
   // NOTE: There is a delay here from the moment the return value is determined to be True
   // (pending=False) until the state becomes RECORD.
   if (record_finished) {
+    auto & controller = Singleton<TracingController>::get_instance();
+    controller.set_initialized(true);
     status_ = TRACE_STATUS::RECORD;
 
     publish_status(status_);

@@ -133,6 +133,8 @@ TracingController::TracingController(bool use_log)
   ignored_process_names_(get_env_vars(IGNORE_PROCESSES_ENV_NAME)),
   select_enabled_(selected_topic_names_.size() > 0 || selected_node_names_.size() > 0),
   ignore_enabled_(ignored_topic_names_.size() > 0 || ignored_node_names_.size() > 0),
+  is_ignored_process_(false),
+  is_initialized_(false),
   use_log_(use_log)
 {
   if (select_enabled_ || ignore_enabled_) {
@@ -241,6 +243,10 @@ bool TracingController::is_allowed_agnocast_callable(const void * callable)
   }
 }
 
+void TracingController::set_initialized(bool value) {
+  std::lock_guard<std::shared_timed_mutex> lock(mutex_);
+  is_initialized_ = value;
+
 bool TracingController::is_allowed_callback(const void * callback)
 {
   std::unordered_map<const void *, bool>::iterator is_allowed_it;
@@ -258,6 +264,9 @@ bool TracingController::is_allowed_callback(const void * callback)
     auto topic_name = to_topic_name(callback);
 
     if (node_name.size() == 0 || topic_name.size() == 0) {
+      if (!is_initialized_) {
+        return false;
+      }
       allowed_callbacks_[callback] = true;
       return true;
     }
@@ -306,7 +315,7 @@ bool TracingController::is_allowed_node(const void * node_handle)
   std::shared_lock<std::shared_timed_mutex> lock(mutex_);  // read lock
   auto node_name_it = node_handle_to_node_names_.find(node_handle);
   if (node_name_it == node_handle_to_node_names_.end()) {
-    return true;
+    return is_initialized_;
   }
   if (select_enabled_ && selected_node_names_.size() > 0) {
     auto is_selected_node = partial_match(selected_node_names_, node_name_it->second);
@@ -322,16 +331,15 @@ bool TracingController::is_allowed_subscription_handle(const void * subscription
 {
   std::shared_lock<std::shared_timed_mutex> lock(mutex_);  // read lock
   auto node_handle_it = subscription_handle_to_node_handles_.find(subscription_handle);
-  if (node_handle_it == subscription_handle_to_node_handles_.end()) {
-    return true;
+  auto topic_name_it = subscription_handle_to_topic_names_.find(subscription_handle);
+
+  if (node_handle_it == subscription_handle_to_node_handles_.end() || 
+      topic_name_it == subscription_handle_to_topic_names_.end()) {
+    return is_initialized_;
   }
   auto node_name_it = node_handle_to_node_names_.find(node_handle_it->second);
   if (node_name_it == node_handle_to_node_names_.end()) {
-    return true;
-  }
-  auto topic_name_it = subscription_handle_to_topic_names_.find(subscription_handle);
-  if (topic_name_it == subscription_handle_to_topic_names_.end()) {
-    return true;
+    return is_initialized_;
   }
 
   if (select_enabled_) {
@@ -378,6 +386,9 @@ bool TracingController::is_allowed_rmw_subscription_handle(const void * rmw_subs
     auto topic_name = rmw_subscription_handle_to_topic_names_[rmw_subscription_handle];
 
     if (node_name.size() == 0 || topic_name.size() == 0) {
+      if (!is_initialized_) {
+        return false;
+      }
       allowed_rmw_subscription_handles_[rmw_subscription_handle] = true;
       return true;
     }
@@ -434,6 +445,9 @@ bool TracingController::is_allowed_publisher_handle(const void * publisher_handl
     auto topic_name = publisher_handle_to_topic_names_[publisher_handle];
 
     if (node_name.size() == 0 || topic_name.size() == 0) {
+      if (!is_initialized_) {
+        return false;
+      }
       allowed_publishers_[publisher_handle] = true;
       if (is_iron_or_later()) {
         // omit "/rosout" output. (after iron version)
@@ -501,6 +515,9 @@ bool TracingController::is_allowed_buffer(const void * buffer)
     auto topic_name = subscription_handle_to_topic_names_[subscription_handle];
 
     if (node_name.size() == 0 || topic_name.size() == 0) {
+      if (!is_initialized_) {
+        return false;
+      }
       allowed_buffers_[buffer] = true;
       return true;
     }
@@ -563,6 +580,9 @@ bool TracingController::is_allowed_timer_handle(const void * timer_handle)
     auto node_name = node_handle_to_node_names_[node_handle];
 
     if (node_name.size() == 0) {
+      if (!is_initialized_) {
+        return false;
+      }
       allowed_timer_handles_[timer_handle] = true;
       return true;
     }
@@ -607,6 +627,9 @@ bool TracingController::is_allowed_state_machine(const void * state_machine)
     auto node_name = node_handle_to_node_names_[node_handle];
 
     if (node_name.size() == 0) {
+      if (!is_initialized_) {
+        return false;
+      }
       allowed_state_machines_[state_machine] = true;
       return true;
     }

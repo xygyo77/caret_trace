@@ -190,6 +190,8 @@ public:
   /// @return True if the message is enabled, false otherwise.
   bool is_allowed_message(const void * message);
 
+  void set_initialized(bool value);
+
 private:
   void debug(std::string message) const;
   void info(std::string message) const;
@@ -211,6 +213,8 @@ private:
   const bool ignore_enabled_;
 
   bool is_ignored_process_;
+
+  bool is_initialized_;
 
   const bool use_log_;  // for test
 
