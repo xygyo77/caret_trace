@@ -59,7 +59,7 @@ rmw_ret_t rmw_get_gid_for_publisher(const rmw_publisher_t * publisher, rmw_gid_t
 // cspell: ignore WRITECDR
 namespace CYCLONEDDS
 {
-void * DDS_WRITE_IMPL;
+void * DDS_WRITE_TS;
 void * DDS_WRITECDR_IMPL;
 }  // namespace CYCLONEDDS
 
@@ -240,7 +240,7 @@ void update_dds_function_addr()
       "_ZN8eprosima8fastrtps4rtps13WriterHistory13set_fragmentsEPNS1_13CacheChange_tE");  // NOLINT
     // clang-format on
   } else if (env_var == "rmw_cyclonedds_cpp") {
-    CYCLONEDDS::DDS_WRITE_IMPL = lib->get_symbol("dds_write_impl");
+    CYCLONEDDS::DDS_WRITE_TS = lib->get_symbol("dds_write_ts");
     CYCLONEDDS::DDS_WRITECDR_IMPL = lib->get_symbol("dds_writecdr_impl");
   }
 }
@@ -249,16 +249,16 @@ void update_dds_function_addr()
 
 // for cyclonedds
 // bind : &ros_message -> source_timestamp
-int dds_write_impl(void * wr, void * data, long tstamp, int action)  // NOLINT
+int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
 {
   static auto & context = Singleton<Context>::get_instance();
   using functionT = int (*)(void *, void *, long, int);  // NOLINT
 
   // clang-format on
-  if (CYCLONEDDS::DDS_WRITE_IMPL == nullptr) {
+  if (CYCLONEDDS::DDS_WRITE_TS == nullptr) {
     update_dds_function_addr();
   }
-  int dds_return = ((functionT)CYCLONEDDS::DDS_WRITE_IMPL)(wr, data, tstamp, action);
+  int dds_return = ((functionT)CYCLONEDDS::DDS_WRITE_TS)(wr, data, tstamp);
 
   if (!context.get_controller().is_allowed_process()) {
     return dds_return;
