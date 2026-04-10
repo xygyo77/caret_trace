@@ -252,7 +252,7 @@ void update_dds_function_addr()
 int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
 {
   static auto & context = Singleton<Context>::get_instance();
-  using functionT = int (*)(void *, void *, long, int);  // NOLINT
+  using functionT = int (*)(void *, void *, long);  // NOLINT
 
   // clang-format on
   if (CYCLONEDDS::DDS_WRITE_TS == nullptr) {
