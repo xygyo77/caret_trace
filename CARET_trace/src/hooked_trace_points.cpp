@@ -240,7 +240,9 @@ void update_dds_function_addr()
       "_ZN8eprosima8fastrtps4rtps13WriterHistory13set_fragmentsEPNS1_13CacheChange_tE");  // NOLINT
     // clang-format on
   } else if (env_var == "rmw_cyclonedds_cpp") {
-    CYCLONEDDS::DDS_WRITE_TS = lib->get_symbol("dds_write_ts");
+    static rcpputils::SharedLibrary ddsc_lib("libddsc.so");
+    
+    CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
     CYCLONEDDS::DDS_WRITECDR_IMPL = lib->get_symbol("dds_writecdr_impl");
   }
 }
