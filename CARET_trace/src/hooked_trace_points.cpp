@@ -18,8 +18,6 @@
 #include "rmw/rmw.h"
 
 #include <dlfcn.h>
-#include <sys/types.h>
-#include <time.h>
 
 #include <cstdint>
 #include <functional>
@@ -246,6 +244,7 @@ void update_dds_function_addr()
     static rcpputils::SharedLibrary ddsc_lib("libddsc.so");
     
     CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
+    CYCLONEDDS::DDS_WRITECDR = lib->get_symbol("dds_write");
     CYCLONEDDS::DDS_WRITECDR_IMPL = lib->get_symbol("dds_writecdr_impl");
   }
 }
