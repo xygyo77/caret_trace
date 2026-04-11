@@ -18,6 +18,8 @@
 #include "rmw/rmw.h"
 
 #include <dlfcn.h>
+#include <sys/types.h>
+#include <time.h>
 
 #include <cstdint>
 #include <functional>
