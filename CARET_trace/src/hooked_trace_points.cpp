@@ -240,17 +240,20 @@ void update_dds_function_addr()
       "_ZN8eprosima8fastrtps4rtps13WriterHistory13set_fragmentsEPNS1_13CacheChange_tE");  // NOLINT
     // clang-format on
   } else if (env_var == "rmw_cyclonedds_cpp") {
-// ログ1: ここを通っているか
-    std::cerr << "[CARET_DEBUG] RMW is cyclonedds. Loading libddsc.so..." << std::endl;
-
     static rcpputils::SharedLibrary ddsc_lib("libddsc.so");
     
-    // ログ2: シンボルが取れているか
-    CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
-    std::cerr << "[CARET_DEBUG] dds_write_ts addr: " << CYCLONEDDS::DDS_WRITE_TS << std::endl;
+    try {
+      CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
+      if (!CYCLONEDDS::DDS_WRITE_TS) {
+        RCUTILS_SET_ERROR_MSG("Failed to get symbol: dds_write_ts is NULL");
+      } else {
+        RCUTILS_SET_ERROR_MSG_WITH_FORMAT_STRING("CARET_DEBUG: dds_write_ts loaded at %p", CYCLONEDDS::DDS_WRITE_TS);
+      }
+    } catch (const std::runtime_error & e) {
+      RCUTILS_SET_ERROR_MSG_WITH_FORMAT_STRING("Could not find dds_write_ts in libddsc.so: %s", e.what());
+    }
 
     CYCLONEDDS::DDS_WRITECDR_IMPL = lib->get_symbol("dds_writecdr_impl");
-    std::cerr << "[CARET_DEBUG] dds_writecdr_impl addr: " << CYCLONEDDS::DDS_WRITECDR_IMPL << std::endl;
   }
 }
 
@@ -260,8 +263,7 @@ void update_dds_function_addr()
 // bind : &ros_message -> source_timestamp
 int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
 {
-  std::cerr << "[CARET_DEBUG] dds_write_ts CALLED! data_addr: " << data 
-            << ", ts: " << tstamp << std::endl;
+  RCUTILS_SET_ERROR_MSG_WITH_FORMAT_STRING("CARET_DEBUG: dds_write_ts CALLED!: %l", tstamp);
 
   static auto & context = Singleton<Context>::get_instance();
   using functionT = int (*)(void *, void *, long);  // NOLINT
