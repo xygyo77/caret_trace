@@ -261,7 +261,7 @@ void update_dds_function_addr()
 int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
 {
   std::cerr << "[CARET_DEBUG] dds_write_ts CALLED! data_addr: " << data 
-            << ", ts: " << timestamp << std::endl;
+            << ", ts: " << tstamp << std::endl;
 
   static auto & context = Singleton<Context>::get_instance();
   using functionT = int (*)(void *, void *, long);  // NOLINT
