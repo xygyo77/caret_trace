@@ -61,7 +61,7 @@ namespace CYCLONEDDS
 {
 void * DDS_WRITE;
 void * DDS_WRITE_TS;
-void * DDS_WRITECDR_IMPL;
+void * DDS_WRITECDR;
 }  // namespace CYCLONEDDS
 
 // For FastDDS
