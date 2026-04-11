@@ -188,6 +188,12 @@ void update_dds_function_addr()
   static std::mutex mutex;
   std::lock_guard<std::mutex> lock(mutex);
 
+  {
+    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
+    dbg_file << "[DEBUG] CARET_DEBUG: update_dds_function_addr CALLED!: " << std::endl;
+    dbg_file.close();
+  }
+
   std::string env_var;
   try {
     env_var = rcpputils::get_env_var("RMW_IMPLEMENTATION");
