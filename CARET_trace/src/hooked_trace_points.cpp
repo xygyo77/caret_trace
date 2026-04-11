@@ -171,6 +171,9 @@ using CallbackGroupCollection =
   std::set<rclcpp::CallbackGroup::WeakPtr, std::owner_less<rclcpp::CallbackGroup::WeakPtr>>;
 
 extern "C" {
+#include <fstream>
+#include <iostream>
+
 // Get symbols from the DDS shared library
 // The dds-related-symbol, which is set by an environment variable, cannot be obtained by dlsym.
 // It is necessary to hook load_library and specify the library to be loaded to get them.
