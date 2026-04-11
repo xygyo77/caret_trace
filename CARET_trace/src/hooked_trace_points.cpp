@@ -308,7 +308,7 @@ int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
 // for cyclonedds
 // bind : &ros_message -> source_timestamp
 // cspell: ignore ddsi, serdata, dinp
-int dds_writecdr(void * wr, void * xp, struct ddsi_serdata * dinp)  // NOLINT
+int dds_writecdr(void * wr, struct ddsi_serdata * dinp)  // NOLINT
 {
   static auto & context = Singleton<Context>::get_instance();
   using functionT = int (*)(void *, void *, struct ddsi_serdata *, bool);  // NOLINT
@@ -317,7 +317,7 @@ int dds_writecdr(void * wr, void * xp, struct ddsi_serdata * dinp)  // NOLINT
   if (CYCLONEDDS::DDS_WRITECDR == nullptr) {
     update_dds_function_addr();
   }
-  int dds_return = ((functionT)CYCLONEDDS::DDS_WRITECDR)(wr, xp, dinp);
+  int dds_return = ((functionT)CYCLONEDDS::DDS_WRITECDR)(wr, dinp);
 
   if (!context.get_controller().is_allowed_process()) {
     return dds_return;
