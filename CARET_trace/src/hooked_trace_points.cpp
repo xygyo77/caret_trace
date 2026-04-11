@@ -59,6 +59,7 @@ rmw_ret_t rmw_get_gid_for_publisher(const rmw_publisher_t * publisher, rmw_gid_t
 // cspell: ignore WRITECDR
 namespace CYCLONEDDS
 {
+void * DDS_WRITE;
 void * DDS_WRITE_TS;
 void * DDS_WRITECDR_IMPL;
 }  // namespace CYCLONEDDS
@@ -170,9 +171,6 @@ public:
 using CallbackGroupCollection =
   std::set<rclcpp::CallbackGroup::WeakPtr, std::owner_less<rclcpp::CallbackGroup::WeakPtr>>;
 
-#include <fstream>
-#include <iostream>
-
 extern "C" {
 // Get symbols from the DDS shared library
 // The dds-related-symbol, which is set by an environment variable, cannot be obtained by dlsym.
@@ -188,12 +186,6 @@ void update_dds_function_addr()
   static std::mutex mutex;
   std::lock_guard<std::mutex> lock(mutex);
 
-  {
-    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
-    dbg_file << "[DEBUG] CARET_DEBUG: update_dds_function_addr CALLED!: " << std::endl;
-    dbg_file.close();
-  }
-
   std::string env_var;
   try {
     env_var = rcpputils::get_env_var("RMW_IMPLEMENTATION");
@@ -206,12 +198,6 @@ void update_dds_function_addr()
 
   if (env_var.empty()) {
     env_var = STRINGIFY(DEFAULT_RMW_IMPLEMENTATION);
-  }
-
-  {
-    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
-    dbg_file << "[DEBUG] RMW_IMPLEMENTATION is: '" << env_var << "'" << std::endl;
-    dbg_file.close();
   }
 
   // ref. rosidl_typesupport/rosidl_typesupport_cpp/src/type_support_dispatch.hpp
@@ -257,20 +243,7 @@ void update_dds_function_addr()
   } else if (env_var == "rmw_cyclonedds_cpp") {
     static rcpputils::SharedLibrary ddsc_lib("libddsc.so");
     
-    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
-    try {
-      CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
-      if (!CYCLONEDDS::DDS_WRITE_TS) {
-        dbg_file << "[DEBUG] Failed to get symbol: dds_write_ts is NULL" << std::endl;
-      } else {
-        dbg_file << "[DEBUG] dds_write_ts loaded at %p" << CYCLONEDDS::DDS_WRITE_TS << std::endl;
-      }
-    } catch (const std::runtime_error & e) {
-      dbg_file << "[DEBUG] Could not find dds_write_ts in libddsc.so: " << e.what() << std::endl;
-    }
-
-    dbg_file.close();
-
+    CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
     CYCLONEDDS::DDS_WRITECDR_IMPL = lib->get_symbol("dds_writecdr_impl");
   }
 }
@@ -279,14 +252,35 @@ void update_dds_function_addr()
 
 // for cyclonedds
 // bind : &ros_message -> source_timestamp
-int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
+int dds_write(void * wr, void * data)  // NOLINT
 {
-  {
-    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
-    dbg_file << "[DEBUG] CARET_DEBUG: dds_write_ts CALLED!: " << tstamp << std::endl;
-    dbg_file.close();
+  static auto & context = Singleton<Context>::get_instance();
+  using functionT = int (*)(void *, void *);  // NOLINT
+
+  // clang-format on
+  if (CYCLONEDDS::DDS_WRITE == nullptr) {
+    update_dds_function_addr();
+  }
+  auto tstamp = clock.now();
+  int dds_return = ((functionT)CYCLONEDDS::DDS_WRITE)(wr, data);
+
+  if (!context.get_controller().is_allowed_process()) {
+    return dds_return;
   }
 
+  if (context.is_recording_allowed() && trace_filter_is_rcl_publish_recorded) {
+    tracepoint(TRACEPOINT_PROVIDER, dds_bind_addr_to_stamp, data, tstamp);
+#ifdef DEBUG_OUTPUT
+    std::cerr << "dds_bind_addr_to_stamp," << data << "," << tstamp << std::endl;
+#endif
+  }
+  return dds_return;
+}
+
+// for cyclonedds
+// bind : &ros_message -> source_timestamp
+int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
+{
   static auto & context = Singleton<Context>::get_instance();
   using functionT = int (*)(void *, void *, long);  // NOLINT
 
