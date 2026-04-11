@@ -311,7 +311,7 @@ int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
 int dds_writecdr(void * wr, struct ddsi_serdata * dinp)  // NOLINT
 {
   static auto & context = Singleton<Context>::get_instance();
-  using functionT = int (*)(void *, void *, struct ddsi_serdata *, bool);  // NOLINT
+  using functionT = int (*)(void *, struct ddsi_serdata *);  // NOLINT
 
   // clang-format on
   if (CYCLONEDDS::DDS_WRITECDR == nullptr) {
