@@ -244,7 +244,7 @@ void update_dds_function_addr()
     static rcpputils::SharedLibrary ddsc_lib("libddsc.so");
     
     CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
-    CYCLONEDDS::DDS_WRITECDR = lib->get_symbol("dds_write");
+    CYCLONEDDS::DDS_WRITE = lib->get_symbol("dds_write");
     CYCLONEDDS::DDS_WRITECDR_IMPL = lib->get_symbol("dds_writecdr_impl");
   }
 }
@@ -256,6 +256,7 @@ void update_dds_function_addr()
 int dds_write(void * wr, void * data)  // NOLINT
 {
   static auto & context = Singleton<Context>::get_instance();
+  static auto & clock = context.get_clock();
   using functionT = int (*)(void *, void *);  // NOLINT
 
   // clang-format on
