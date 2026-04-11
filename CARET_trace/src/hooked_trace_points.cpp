@@ -199,6 +199,12 @@ void update_dds_function_addr()
     env_var = STRINGIFY(DEFAULT_RMW_IMPLEMENTATION);
   }
 
+  {
+    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
+    dbg_file << "[DEBUG] RMW_IMPLEMENTATION is: '" << env_var << "'" << std::endl;
+    dbg_file.close();
+  }
+
   // ref. rosidl_typesupport/rosidl_typesupport_cpp/src/type_support_dispatch.hpp
   std::string library_name;
   try {
@@ -242,16 +248,19 @@ void update_dds_function_addr()
   } else if (env_var == "rmw_cyclonedds_cpp") {
     static rcpputils::SharedLibrary ddsc_lib("libddsc.so");
     
+    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
     try {
       CYCLONEDDS::DDS_WRITE_TS = ddsc_lib.get_symbol("dds_write_ts");
       if (!CYCLONEDDS::DDS_WRITE_TS) {
-        RCUTILS_SET_ERROR_MSG("Failed to get symbol: dds_write_ts is NULL");
+        dbg_file << "[DEBUG] Failed to get symbol: dds_write_ts is NULL" << std::endl;
       } else {
-        RCUTILS_SET_ERROR_MSG_WITH_FORMAT_STRING("CARET_DEBUG: dds_write_ts loaded at %p", CYCLONEDDS::DDS_WRITE_TS);
+        dbg_file << "[DEBUG] dds_write_ts loaded at %p" << CYCLONEDDS::DDS_WRITE_TS << std::endl;
       }
     } catch (const std::runtime_error & e) {
-      RCUTILS_SET_ERROR_MSG_WITH_FORMAT_STRING("Could not find dds_write_ts in libddsc.so: %s", e.what());
+      dbg_file << "[DEBUG] Could not find dds_write_ts in libddsc.so: " << e.what() << std::endl;
     }
+
+    dbg_file.close();
 
     CYCLONEDDS::DDS_WRITECDR_IMPL = lib->get_symbol("dds_writecdr_impl");
   }
@@ -263,7 +272,11 @@ void update_dds_function_addr()
 // bind : &ros_message -> source_timestamp
 int dds_write_ts(void * wr, void * data, long tstamp)  // NOLINT
 {
-  RCUTILS_SET_ERROR_MSG_WITH_FORMAT_STRING("CARET_DEBUG: dds_write_ts CALLED!: %l", tstamp);
+  {
+    std::ofstream dbg_file("/tmp/caret_lifecycle.log", std::ios::app);
+    dbg_file << "[DEBUG] CARET_DEBUG: dds_write_ts CALLED!: " << tstamp << std::endl;
+    dbg_file.close();
+  }
 
   static auto & context = Singleton<Context>::get_instance();
   using functionT = int (*)(void *, void *, long);  // NOLINT
