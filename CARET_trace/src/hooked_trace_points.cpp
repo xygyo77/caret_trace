@@ -257,19 +257,34 @@ int dds_write(void * wr, void * data)  // NOLINT
 {
   static auto & context = Singleton<Context>::get_instance();
   static auto & clock = context.get_clock();
-  using functionT = int (*)(void *, void *);  // NOLINT
+  
+  // 1. 本物の dds_write_ts を呼び出すための型定義
+  // dds_write_ts(writer, data, timestamp)
+  using functionT = int (*)(void *, const void *, int64_t);
 
-  // clang-format on
-  if (CYCLONEDDS::DDS_WRITE == nullptr) {
-    update_dds_function_addr();
+  if (CYCLONEDDS::DDS_WRITE_TS == nullptr) {
+    update_dds_function_addr(); // ここで dds_write_ts のシンボルを取得するようにしておく
   }
+
+  // 2. CARET側の Monotonic時刻を取得
   auto tstamp = clock.now();
-  int dds_return = ((functionT)CYCLONEDDS::DDS_WRITE)(wr, data);
+
+  // 3. 重要：本物の dds_write ではなく、dds_write_ts を呼び出す
+  // DDS内部のメッセージ時刻が CARET の Monotonic時刻に上書き
+  int dds_return = DDS_RETCODE_ERROR;
+  if (CYCLONEDDS::DDS_WRITE_TS) {
+    dds_return = ((functionT)CYCLONEDDS::DDS_WRITE_TS)(wr, data, tstamp);
+  } else {
+    // fallback: dds_write_ts が取れなかった場合のみ dds_write を呼ぶ
+    using fallbackT = int (*)(void *, void *);
+    dds_return = ((fallbackT)CYCLONEDDS::DDS_WRITE)(wr, data);
+  }
 
   if (!context.get_controller().is_allowed_process()) {
     return dds_return;
   }
 
+  // 4. トレースポイントの発行（DDSに渡したのと同じ tstamp を使う）
   if (context.is_recording_allowed() && trace_filter_is_rcl_publish_recorded) {
     tracepoint(TRACEPOINT_PROVIDER, dds_bind_addr_to_stamp, data, tstamp);
 #ifdef DEBUG_OUTPUT
